@@ -11,7 +11,7 @@
   "parserOptions": {
     "ecmaVersion": 2020,
     "sourceType": "module",
-    "project": "./apps/server/tsconfig.json"
+    "project": "./frontend/tsconfig.json"
   },
   "settings": {
     "react": {

@@ -123,7 +123,7 @@ const matchTypes: MatchType[] = [
 // 환경에 따라 API URL 설정
 const API_BASE_URL = import.meta.env.DEV 
   ? 'http://localhost:4000/api' 
-  : 'https://backend-420yxco5z-skwka12346-gmailcoms-projects.vercel.app/api'
+  : 'https://backend-nc2bgwb4t-skwka12346-gmailcoms-projects.vercel.app/api'
 
 const selectType = async (type: string) => {
   selectedType.value = type
