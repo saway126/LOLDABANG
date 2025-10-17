@@ -214,6 +214,10 @@ def parse_kakao_talk(text: str) -> dict:
     return {"players": players, "errors": errors}
 
 # API 엔드포인트들
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok"}
+
 @app.get("/")
 async def root():
     return {"message": "LoL Custom Match Tool API"}
