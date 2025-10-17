@@ -4,8 +4,7 @@
   "description": "LoL Custom Match Tool",
   "main": "index.js",
   "scripts": {
-    "build": "cd frontend && npm run build && cd .. && npm run copy-assets",
-    "copy-assets": "Copy-Item -Path 'frontend/dist/*' -Destination 'public/' -Recurse -Force",
+    "build": "echo 'Static site - no build needed'",
     "dev": "cd frontend && npm run dev",
     "start": "cd frontend && npm run preview"
   },
