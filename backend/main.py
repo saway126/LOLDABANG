@@ -372,11 +372,14 @@ async def get_match_participants(match_id: int):
     
     return participants
 
-# 앱 시작 시 데이터베이스 초기화
-init_db()
-
 # Vercel 핸들러
 handler = app
+
+# 앱 시작 시 데이터베이스 초기화 (Vercel에서 실행)
+try:
+    init_db()
+except Exception as e:
+    print(f"Database initialization error: {e}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=4000)
