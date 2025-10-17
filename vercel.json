@@ -4,14 +4,6 @@
     {
       "src": "backend/main.py",
       "use": "@vercel/python"
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/node",
-      "config": {
-        "installCommand": "npm install --prefix frontend",
-        "buildCommand": "npm run build --prefix frontend"
-      }
     }
   ],
   "routes": [
@@ -21,7 +13,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "frontend/dist/$1"
+      "dest": "public/$1"
     }
   ]
 }
