@@ -13,7 +13,7 @@ import os
 app = FastAPI(title="LoL Custom Match Tool API", version="1.0.0")
 
 # 데이터베이스 파일 경로 설정 (Vercel 환경에 맞게)
-DB_PATH = os.path.join(os.path.dirname(__file__), 'loldabang.db')
+DB_PATH = "/tmp/loldabang.db"
 
 # CORS 설정
 app.add_middleware(
@@ -26,7 +26,7 @@ app.add_middleware(
 
 
 
-# 데이터베이스 초기화
+@app.on_event("startup")
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -375,11 +375,7 @@ async def get_match_participants(match_id: int):
 # Vercel 핸들러
 handler = app
 
-# 앱 시작 시 데이터베이스 초기화 (Vercel에서 실행)
-try:
-    init_db()
-except Exception as e:
-    print(f"Database initialization error: {e}")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=4000)
