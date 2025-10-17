@@ -26,7 +26,6 @@ app.add_middleware(
 
 
 
-@app.on_event("startup")
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -70,6 +69,9 @@ def init_db():
     conn.commit()
     conn.close()
     print("Database initialized.")
+
+# 데이터베이스 즉시 초기화
+init_db()
 
 # Pydantic 모델들
 class Player(BaseModel):
