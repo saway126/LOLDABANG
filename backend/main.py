@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import List, Optional
-import sqlite3
+import pysqlite3 as sqlite3
 import json
 import re
 from datetime import datetime
