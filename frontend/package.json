@@ -7,7 +7,8 @@
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
     "lint": "vue-tsc --noEmit",
-    "lint:fix": "vue-tsc --noEmit"
+    "lint:fix": "vue-tsc --noEmit",
+    "test": "echo 'No tests specified' && exit 0"
   },
   "dependencies": {
     "vue": "^3.4.0",
