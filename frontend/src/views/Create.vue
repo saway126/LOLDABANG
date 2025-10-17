@@ -46,7 +46,12 @@
         <h3 class="section-title">💬 카카오톡 댓글 파싱</h3>
         <div class="parsing-container">
           <div class="form-group">
-            <label class="form-label">댓글 텍스트 입력</label>
+            <div class="form-label-row">
+              <label class="form-label">댓글 텍스트 입력</label>
+              <button type="button" @click="pasteFromClipboard" class="paste-btn">
+                📋 클립보드에서 붙여넣기
+              </button>
+            </div>
             <textarea 
               v-model="kakaoText"
               placeholder="닉네임#태그 G1 주라인 / 희망라인1 희망라인2&#10;예시:&#10;홍길동#KR1 G1 TOP / JUNGLE MID&#10;김철수#KR2 S2 JUNGLE / TOP"
@@ -139,6 +144,19 @@ const matchForm = reactive({
   host: '',
   type: 'soft' as 'soft' | 'hard' | 'hyper'
 })
+
+// 클립보드에서 텍스트 가져오기
+const pasteFromClipboard = async () => {
+  try {
+    const text = await navigator.clipboard.readText()
+    kakaoText.value = text
+    // 자동으로 파싱도 실행
+    parseText()
+  } catch (err) {
+    console.error('클립보드 접근 실패:', err)
+    alert('클립보드 접근에 실패했습니다. 수동으로 붙여넣기 해주세요.')
+  }
+}
 
 const parseKakaoTalk = (text: string): { players: Player[]; errors: string[] } => {
   const lines = text.split('\n').filter((line) => line.trim() !== '')
@@ -690,5 +708,32 @@ const createMatch = async () => {
   .form-container {
     padding: 1.5rem;
   }
+}
+
+/* 클립보드 버튼 스타일 */
+.form-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.paste-btn {
+  background: linear-gradient(135deg, #8B4513, #A0522D);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(139, 69, 19, 0.2);
+}
+
+.paste-btn:hover {
+  background: linear-gradient(135deg, #A0522D, #8B4513);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(139, 69, 19, 0.3);
 }
 </style>
