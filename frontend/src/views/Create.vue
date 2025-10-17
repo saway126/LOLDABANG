@@ -156,7 +156,9 @@ const imageInput = ref<HTMLInputElement | null>(null)
 const ocrLoading = ref(false)
 
 // 환경에 따라 API URL 설정
-const API_BASE_URL = '/api'
+const API_BASE_URL = import.meta.env.DEV 
+  ? 'http://localhost:4000/api' 
+  : 'https://backend-hbv5wmexu-skwka12346-gmailcoms-projects.vercel.app/api'
 
 const matchForm = reactive({
   customId: '',
