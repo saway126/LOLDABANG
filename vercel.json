@@ -4,14 +4,6 @@
     {
       "src": "backend/main.py",
       "use": "@vercel/python"
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/node",
-      "config": {
-        "installCommand": "npm install --prefix frontend",
-        "buildCommand": "npm run build --prefix frontend"
-      }
     }
   ],
   "routes": [
@@ -20,18 +12,8 @@
       "dest": "backend/main.py"
     },
     {
-      "src": "/assets/(.*)",
-      "headers": { "cache-control": "s-maxage=31536000,immutable" },
-      "dest": "/frontend/dist/assets/$1"
-    },
-    {
-      "src": "/images/(.*)",
-      "headers": { "cache-control": "s-maxage=31536000,immutable" },
-      "dest": "/frontend/dist/images/$1"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/frontend/dist/index.html"
+      "dest": "public/$1"
     }
   ]
 }
