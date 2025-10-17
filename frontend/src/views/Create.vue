@@ -133,6 +133,13 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 
+// Tesseract.js 타입 선언
+declare global {
+  interface Window {
+    Tesseract: any
+  }
+}
+
 interface Player {
   name: string
   tier?: string
@@ -177,6 +184,28 @@ const triggerImageUpload = () => {
   imageInput.value?.click()
 }
 
+// Tesseract.js CDN 로드 함수
+const loadTesseract = async () => {
+  return new Promise((resolve, reject) => {
+    if (window.Tesseract) {
+      resolve(window.Tesseract)
+      return
+    }
+    
+    const script = document.createElement('script')
+    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.0.2/dist/browser/index.min.js'
+    script.onload = () => {
+      if (window.Tesseract) {
+        resolve(window.Tesseract)
+      } else {
+        reject(new Error('Tesseract.js 로드 실패'))
+      }
+    }
+    script.onerror = () => reject(new Error('Tesseract.js 스크립트 로드 실패'))
+    document.head.appendChild(script)
+  })
+}
+
 // 이미지 업로드 처리
 const handleImageUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement
@@ -193,9 +222,8 @@ const handleImageUpload = async (event: Event) => {
   ocrLoading.value = true
   
   try {
-    // Tesseract.js 동적 로드
-    // @ts-ignore
-    const Tesseract = (await import('tesseract.js')).default
+    // Tesseract.js CDN 로드
+    const Tesseract = await loadTesseract() as any
     
     // 이미지를 Canvas로 변환
     const canvas = document.createElement('canvas')
