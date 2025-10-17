@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  server:
+    build: ./apps/server
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - SERVER_PORT=4000
+    volumes:
+      - ./data:/app/data
+
+  web:
+    build: ./apps/web
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    environment:
+      - NODE_ENV=production
