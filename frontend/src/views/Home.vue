@@ -1,6 +1,9 @@
 <template>
   <div class="home">
-    <h2>내전 종류</h2>
+    <div class="welcome-section">
+      <h2 class="welcome-title">🏠 롤다방에 오신 것을 환영합니다!</h2>
+      <p class="welcome-subtitle">내전 종류를 선택하여 시작해보세요</p>
+    </div>
     
     <div class="type-cards">
       <div 
@@ -9,11 +12,26 @@
         class="type-card"
         @click="selectType(matchType.key)"
       >
-        <div class="type-icon">{{ matchType.icon }}</div>
-        <h3>{{ matchType.name }}</h3>
-        <p>{{ matchType.desc }}</p>
-        <div class="match-count">
-          {{ getMatchCount(matchType.key) }}개의 내전
+        <div class="card-image-container">
+          <img 
+            :src="getMatchTypeImage(matchType.key)" 
+            :alt="matchType.name"
+            class="card-background-image"
+          />
+          <div class="image-overlay"></div>
+          <div class="card-header">
+            <div class="type-icon">{{ matchType.icon }}</div>
+            <div class="match-count-badge">
+              {{ getMatchCount(matchType.key) }}개
+            </div>
+          </div>
+        </div>
+        <div class="card-content">
+          <h3 class="type-name">{{ matchType.name }}</h3>
+          <p class="type-desc">{{ matchType.desc }}</p>
+          <div class="card-footer">
+            <div class="click-hint">클릭하여 내전 목록 보기</div>
+          </div>
         </div>
       </div>
     </div>
@@ -129,6 +147,15 @@ const getMatchCount = (type: string): number => {
   return matchCounts.value[type] || 0
 }
 
+const getMatchTypeImage = (type: string): string => {
+  const imageMap: Record<string, string> = {
+    'soft': '/images/soft-peerless.webp',
+    'hard': '/images/hard-peerless.webp',
+    'hyper': '/images/hyper-peerless.webp'
+  }
+  return imageMap[type] || '/images/soft-peerless.webp'
+}
+
 const getStatusText = (status: string): string => {
   switch (status) {
     case 'open': return '모집중'
@@ -175,61 +202,179 @@ window.addEventListener('focus', () => {
 
 <style scoped>
 .home {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
+  padding: 0 1rem;
 }
 
-.home h2 {
-  color: #333;
-  margin-bottom: 1.5rem;
+.welcome-section {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(139, 69, 19, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 196, 168, 0.3);
+}
+
+.welcome-title {
+  color: #8B4513;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.8rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-subtitle {
+  color: #A0522D;
+  margin: 0;
+  font-size: 1rem;
+  opacity: 0.8;
 }
 
 .type-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
 }
 
 .type-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  text-align: center;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(139, 69, 19, 0.15);
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: 2px solid transparent;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(212, 196, 168, 0.3);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  height: 400px;
+}
+
+.type-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s;
+}
+
+.type-card:hover::before {
+  left: 100%;
 }
 
 .type-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-  border-color: #007bff;
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 16px 48px rgba(139, 69, 19, 0.25);
+  border-color: #8B4513;
+}
+
+.type-card:hover .card-background-image {
+  transform: scale(1.1);
+}
+
+.type-card:hover .image-overlay {
+  opacity: 0.8;
+}
+
+.card-image-container {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+  border-radius: 20px 20px 0 0;
+}
+
+.card-background-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 69, 19, 0.7) 0%,
+    rgba(160, 82, 45, 0.5) 50%,
+    rgba(139, 69, 19, 0.8) 100%
+  );
+  transition: opacity 0.3s ease;
+}
+
+.card-header {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  right: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 2;
+}
+
+.card-content {
+  padding: 1.5rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .type-icon {
-  font-size: 2rem;
-  margin-bottom: 1rem;
+  font-size: 3rem;
+  filter: drop-shadow(2px 2px 8px rgba(0, 0, 0, 0.5));
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
 }
 
-.type-card h3 {
-  margin: 0 0 0.5rem 0;
-  color: #333;
-}
-
-.type-card p {
-  color: #666;
-  margin: 0 0 1rem 0;
-}
-
-.match-count {
-  background: #f8f9fa;
-  padding: 0.5rem;
-  border-radius: 4px;
+.match-count-badge {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(245, 241, 232, 0.9));
+  color: #8B4513;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
   font-size: 0.9rem;
-  color: #666;
-  font-weight: 500;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(139, 69, 19, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.type-name {
+  margin: 0 0 1rem 0;
+  color: #8B4513;
+  font-size: 1.4rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.type-desc {
+  color: #A0522D;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+.card-footer {
+  border-top: 1px solid rgba(212, 196, 168, 0.5);
+  padding-top: 1rem;
+}
+
+.click-hint {
+  color: #8B4513;
+  font-size: 0.85rem;
+  opacity: 0.7;
+  font-style: italic;
 }
 
 .matches-section {
@@ -327,5 +472,64 @@ window.addEventListener('focus', () => {
 .match-status.completed {
   background: #d1ecf1;
   color: #0c5460;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .type-cards {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .type-card {
+    height: 350px;
+  }
+  
+  .card-image-container {
+    height: 150px;
+  }
+  
+  .type-icon {
+    font-size: 2.5rem;
+  }
+  
+  .match-count-badge {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+  }
+  
+  .type-name {
+    font-size: 1.2rem;
+  }
+  
+  .type-desc {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .type-card {
+    height: 320px;
+  }
+  
+  .card-image-container {
+    height: 120px;
+  }
+  
+  .card-content {
+    padding: 1rem;
+  }
+  
+  .type-icon {
+    font-size: 2rem;
+  }
+  
+  .type-name {
+    font-size: 1.1rem;
+  }
+  
+  .type-desc {
+    font-size: 0.85rem;
+  }
 }
 </style>

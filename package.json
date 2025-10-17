@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "npm run -w frontend dev & python backend/main.py",
     "build": "npm run -w frontend build",
+    "vercel-build": "cd frontend && npm run build",
     "test": "npm test -w frontend"
   },
   "keywords": [],

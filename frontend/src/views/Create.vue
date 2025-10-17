@@ -1,81 +1,114 @@
 <template>
   <div class="create">
-    <h2>내전 생성</h2>
+    <div class="page-header">
+      <h2 class="page-title">➕ 내전 생성</h2>
+      <p class="page-subtitle">카카오톡 댓글을 파싱하여 내전을 만들어보세요</p>
+    </div>
     
-    <form @submit.prevent="createMatch" class="form">
-      <div class="form-group">
-        <label>내전 ID</label>
-        <input 
-          v-model="matchForm.customId" 
-          type="text" 
-          placeholder="예: 내전001"
-          required
-        />
-      </div>
-      
-      <div class="form-group">
-        <label>진행자</label>
-        <input 
-          v-model="matchForm.host" 
-          type="text" 
-          placeholder="진행자 이름"
-          required
-        />
-      </div>
-      
-      <div class="form-group">
-        <label>내전 종류</label>
-        <select v-model="matchForm.type">
-          <option value="soft">소프트 피어리스</option>
-          <option value="hard">하드 피어리스</option>
-          <option value="hyper">하이퍼 피어리스</option>
-        </select>
-      </div>
-      
-      <div class="form-group">
-        <label>카톡 댓글 텍스트</label>
-        <textarea 
-          v-model="kakaoText"
-          placeholder="닉네임#태그 G1 주라인 / 희망라인1 희망라인2"
-          rows="4"
-        ></textarea>
-        <button type="button" @click="parseText" class="parse-btn">파싱</button>
-      </div>
-      
-      <div v-if="parsedPlayers.length > 0" class="form-group">
-        <label>참가자 선택 ({{ selectedPlayers.length }}명 선택됨)</label>
-        <div class="player-list">
-          <button 
-            type="button" 
-            @click="toggleSelectAll"
-            class="select-all-btn"
-          >
-            {{ selectedPlayers.length === parsedPlayers.length ? '전체 해제' : '전체 선택' }}
-          </button>
+    <form @submit.prevent="createMatch" class="form-container">
+      <div class="form-section">
+        <h3 class="section-title">📝 내전 정보</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">내전 ID</label>
+            <input 
+              v-model="matchForm.customId" 
+              type="text" 
+              placeholder="예: 내전001"
+              class="form-input"
+              required
+            />
+          </div>
           
-          <div 
-            v-for="(player, index) in parsedPlayers" 
-            :key="index"
-            class="player-item"
-            @click="togglePlayer(player.name)"
-          >
-            <span class="checkbox">
-              {{ selectedPlayers.includes(player.name) ? '☑️' : '☐' }}
-            </span>
-            <span class="player-text">
-              {{ player.name }} ({{ player.tier }}{{ player.rank }}) - {{ player.mainLane }}
-            </span>
+          <div class="form-group">
+            <label class="form-label">진행자</label>
+            <input 
+              v-model="matchForm.host" 
+              type="text" 
+              placeholder="진행자 이름"
+              class="form-input"
+              required
+            />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">내전 종류</label>
+            <select v-model="matchForm.type" class="form-select">
+              <option value="soft">🟢 소프트 피어리스</option>
+              <option value="hard">🟡 하드 피어리스</option>
+              <option value="hyper">🔴 하이퍼 피어리스</option>
+            </select>
           </div>
         </div>
       </div>
       
-      <button 
-        type="submit" 
-        :disabled="loading || selectedPlayers.length === 0"
-        class="submit-btn"
-      >
-        {{ loading ? '생성 중...' : '내전 생성' }}
-      </button>
+      <div class="form-section">
+        <h3 class="section-title">💬 카카오톡 댓글 파싱</h3>
+        <div class="parsing-container">
+          <div class="form-group">
+            <label class="form-label">댓글 텍스트 입력</label>
+            <textarea 
+              v-model="kakaoText"
+              placeholder="닉네임#태그 G1 주라인 / 희망라인1 희망라인2&#10;예시:&#10;홍길동#KR1 G1 TOP / JUNGLE MID&#10;김철수#KR2 S2 JUNGLE / TOP"
+              class="form-textarea"
+              rows="6"
+            ></textarea>
+            <button type="button" @click="parseText" class="parse-btn">
+              <span class="btn-icon">🔍</span>
+              <span class="btn-text">파싱하기</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div v-if="parsedPlayers.length > 0" class="form-section">
+        <h3 class="section-title">👥 참가자 선택</h3>
+        <div class="participants-container">
+          <div class="participants-header">
+            <span class="participants-count">{{ selectedPlayers.length }}명 선택됨</span>
+            <button 
+              type="button" 
+              @click="toggleSelectAll"
+              class="select-all-btn"
+            >
+              <span class="btn-icon">{{ selectedPlayers.length === parsedPlayers.length ? '☑️' : '☐' }}</span>
+              <span class="btn-text">{{ selectedPlayers.length === parsedPlayers.length ? '전체 해제' : '전체 선택' }}</span>
+            </button>
+          </div>
+          
+          <div class="player-grid">
+            <div 
+              v-for="(player, index) in parsedPlayers" 
+              :key="index"
+              class="player-card"
+              :class="{ 'selected': selectedPlayers.includes(player.name) }"
+              @click="togglePlayer(player.name)"
+            >
+              <div class="player-checkbox">
+                {{ selectedPlayers.includes(player.name) ? '☑️' : '☐' }}
+              </div>
+              <div class="player-info">
+                <div class="player-name">{{ player.name }}</div>
+                <div class="player-details">
+                  <span class="player-tier">{{ player.tier }}{{ player.rank }}</span>
+                  <span class="player-lane">{{ player.mainLane }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-actions">
+        <button 
+          type="submit" 
+          :disabled="loading || selectedPlayers.length === 0"
+          class="submit-btn"
+        >
+          <span class="btn-icon">{{ loading ? '⏳' : '🚀' }}</span>
+          <span class="btn-text">{{ loading ? '생성 중...' : '내전 생성하기' }}</span>
+        </button>
+      </div>
     </form>
   </div>
 </template>
@@ -343,103 +376,314 @@ const createMatch = async () => {
 
 <style scoped>
 .create {
-  max-width: 600px;
+  max-width: 1000px;
   margin: 0 auto;
+  padding: 0 1rem;
 }
 
-.create h2 {
-  color: #333;
-  margin-bottom: 1.5rem;
+.page-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(139, 69, 19, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 196, 168, 0.3);
 }
 
-.form {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.page-title {
+  color: #8B4513;
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.page-subtitle {
+  color: #A0522D;
+  margin: 0;
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+.form-container {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(139, 69, 19, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 196, 168, 0.3);
+}
+
+.form-section {
+  margin-bottom: 2.5rem;
+}
+
+.section-title {
+  color: #8B4513;
+  margin: 0 0 1.5rem 0;
+  font-size: 1.3rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+  border-bottom: 2px solid #d4c4a8;
+  padding-bottom: 0.5rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
 }
 
 .form-group {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
-.form-group label {
+.form-label {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: bold;
-  color: #333;
+  color: #8B4513;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.form-input,
+.form-select,
+.form-textarea {
   width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 1rem;
+  border: 2px solid #d4c4a8;
+  border-radius: 12px;
   font-size: 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  color: #8B4513;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
-.form-group textarea {
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #8B4513;
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.1);
+  background: rgba(255, 255, 255, 1);
+}
+
+.form-textarea {
   resize: vertical;
+  min-height: 120px;
+  font-family: inherit;
+}
+
+.parsing-container {
+  background: rgba(245, 241, 232, 0.5);
+  padding: 1.5rem;
+  border-radius: 15px;
+  border: 1px solid rgba(212, 196, 168, 0.3);
 }
 
 .parse-btn {
-  background: #2196F3;
+  background: linear-gradient(135deg, #8B4513, #A0522D);
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  padding: 1rem 2rem;
+  border-radius: 12px;
   cursor: pointer;
-  margin-top: 0.5rem;
+  font-size: 1rem;
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3);
 }
 
-.player-list {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+.parse-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(139, 69, 19, 0.4);
+}
+
+.btn-icon {
+  font-size: 1.1rem;
+}
+
+.btn-text {
+  font-weight: 500;
+}
+
+.participants-container {
+  background: rgba(245, 241, 232, 0.5);
+  padding: 1.5rem;
+  border-radius: 15px;
+  border: 1px solid rgba(212, 196, 168, 0.3);
+}
+
+.participants-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(212, 196, 168, 0.5);
+}
+
+.participants-count {
+  color: #8B4513;
+  font-weight: bold;
+  font-size: 1.1rem;
 }
 
 .select-all-btn {
-  width: 100%;
-  padding: 0.5rem;
-  border: none;
-  background: #f5f5f5;
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid #d4c4a8;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
   cursor: pointer;
-  font-weight: bold;
-  color: #2196F3;
-}
-
-.player-item {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  color: #8B4513;
+  font-weight: 500;
+}
+
+.select-all-btn:hover {
+  background: rgba(139, 69, 19, 0.1);
+  border-color: #8B4513;
+}
+
+.player-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
   padding: 0.5rem;
-  border-bottom: 1px solid #eee;
+}
+
+.player-card {
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid #d4c4a8;
+  border-radius: 12px;
+  padding: 1rem;
   cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
-.player-item:hover {
-  background: #f9f9f9;
+.player-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.2);
+  border-color: #8B4513;
 }
 
-.checkbox {
-  margin-right: 0.5rem;
+.player-card.selected {
+  background: rgba(139, 69, 19, 0.1);
+  border-color: #8B4513;
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.2);
+}
+
+.player-checkbox {
+  font-size: 1.2rem;
+  color: #8B4513;
+}
+
+.player-info {
+  flex: 1;
+}
+
+.player-name {
+  font-weight: bold;
+  color: #8B4513;
+  margin-bottom: 0.3rem;
+  font-size: 1rem;
+}
+
+.player-details {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.player-tier {
+  background: rgba(139, 69, 19, 0.1);
+  color: #8B4513;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.player-lane {
+  background: rgba(160, 82, 45, 0.1);
+  color: #A0522D;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.form-actions {
+  text-align: center;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(212, 196, 168, 0.5);
 }
 
 .submit-btn {
-  width: 100%;
-  background: #4CAF50;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
   color: white;
   border: none;
-  padding: 1rem;
-  border-radius: 4px;
-  font-size: 1rem;
+  padding: 1.2rem 3rem;
+  border-radius: 15px;
   cursor: pointer;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
 }
 
 .submit-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .player-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .participants-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .page-title {
+    font-size: 1.5rem;
+  }
+  
+  .form-container {
+    padding: 1.5rem;
+  }
 }
 </style>

@@ -1,67 +1,86 @@
 <template>
   <div class="balance">
-    <h2>밸런스 조율</h2>
+    <div class="page-header">
+      <h2 class="page-title">⚖️ 밸런스 조율</h2>
+      <p class="page-subtitle">공정한 팀 구성을 위한 밸런싱 도구입니다</p>
+    </div>
     
-    <div class="form">
-      <div class="form-group">
-        <label>내전 선택</label>
-        <div class="match-list">
-          <button 
-            v-for="match in matches" 
-            :key="match.id"
-            @click="selectMatch(match.id)"
-            :class="['match-btn', { active: selectedMatchId === match.id }]"
-          >
-            {{ match.customId }}
-          </button>
-        </div>
-      </div>
-      
-      <div v-if="participants.length > 0" class="form-group">
-        <label>참가자 선택 ({{ selectedParticipantIds.length }}명 선택됨)</label>
-        <div class="player-list">
-          <button 
-            type="button" 
-            @click="toggleSelectAllParticipants"
-            class="select-all-btn"
-          >
-            {{ selectedParticipantIds.length === participants.length ? '전체 해제' : '전체 선택' }}
-          </button>
-          
-          <div 
-            v-for="player in participants" 
-            :key="player.id"
-            class="player-item"
-            @click="toggleParticipant(player.id!)"
-          >
-            <span class="checkbox">
-              {{ selectedParticipantIds.includes(player.id!) ? '☑️' : '☐' }}
-            </span>
-            <span class="player-text">
-              <span class="player-name">{{ player.name }}</span>
-              <span :class="['tier-badge', getTierClass(player.tier)]">
-                {{ player.tier || 'UNRANKED' }}{{ player.rank || '' }}
-              </span>
-              <span class="lane-info">
-                <span class="main-lane">
-                  {{ getLaneIcon(player.mainLane) }} {{ player.mainLane || 'UNKNOWN' }}
-                </span>
-                <span v-if="player.preferredLanes && player.preferredLanes.length > 0" class="preferred-lanes">
-                  (희망: {{ player.preferredLanes.join(', ') }})
-                </span>
-              </span>
-            </span>
+    <div class="form-container">
+      <div class="form-section">
+        <h3 class="section-title">🏆 내전 선택</h3>
+        <div class="match-selection">
+          <div class="match-grid">
+            <button 
+              v-for="match in matches" 
+              :key="match.id"
+              @click="selectMatch(match.id)"
+              :class="['match-card', { active: selectedMatchId === match.id }]"
+            >
+              <div class="match-icon">🎮</div>
+              <div class="match-info">
+                <div class="match-id">{{ match.customId }}</div>
+                <div class="match-details">{{ match.type }} • {{ match.host }}</div>
+              </div>
+            </button>
           </div>
         </div>
       </div>
       
-      <div class="button-row">
+      <div v-if="participants.length > 0" class="form-section">
+        <h3 class="section-title">👥 참가자 선택</h3>
+        <div class="participants-container">
+          <div class="participants-header">
+            <span class="participants-count">{{ selectedParticipantIds.length }}명 선택됨</span>
+            <button 
+              type="button" 
+              @click="toggleSelectAllParticipants"
+              class="select-all-btn"
+            >
+              <span class="btn-icon">{{ selectedParticipantIds.length === participants.length ? '☑️' : '☐' }}</span>
+              <span class="btn-text">{{ selectedParticipantIds.length === participants.length ? '전체 해제' : '전체 선택' }}</span>
+            </button>
+          </div>
+          
+          <div class="player-grid">
+            <div 
+              v-for="player in participants" 
+              :key="player.id"
+              class="player-card"
+              :class="{ 'selected': selectedParticipantIds.includes(player.id!) }"
+              @click="toggleParticipant(player.id!)"
+            >
+              <div class="player-checkbox">
+                {{ selectedParticipantIds.includes(player.id!) ? '☑️' : '☐' }}
+              </div>
+              <div class="player-info">
+                <div class="player-name">{{ player.name }}</div>
+                <div class="player-details">
+                  <span :class="['tier-badge', getTierClass(player.tier)]">
+                    {{ player.tier || 'UNRANKED' }}{{ player.rank || '' }}
+                  </span>
+                  <span class="lane-info">
+                    <span class="main-lane">
+                      {{ getLaneIcon(player.mainLane) }} {{ player.mainLane || 'UNKNOWN' }}
+                    </span>
+                    <span v-if="player.preferredLanes && player.preferredLanes.length > 0" class="preferred-lanes">
+                      (희망: {{ player.preferredLanes.join(', ') }})
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-actions">
         <button 
           @click="runBalance"
           :disabled="loading || selectedParticipantIds.length < 10"
           class="balance-btn"
         >
-          {{ loading ? '밸런싱 중...' : '밸런싱 실행' }}
+          <span class="btn-icon">{{ loading ? '⏳' : '⚖️' }}</span>
+          <span class="btn-text">{{ loading ? '밸런싱 중...' : '밸런싱 실행' }}</span>
         </button>
         
         <button 
@@ -74,41 +93,55 @@
       </div>
       
       <div v-if="balanceResult" class="balance-result">
-        <div class="quality-score">
-          <span class="quality-label">품질 점수:</span>
-          <span :class="['quality-value', getQualityClass(balanceResult.qualityScore)]">
-            {{ (balanceResult.qualityScore * 100).toFixed(1) }}%
-          </span>
+        <div class="result-header">
+          <h3 class="result-title">🎯 밸런싱 결과</h3>
+          <div class="quality-score">
+            <span class="quality-label">품질 점수</span>
+            <span :class="['quality-value', getQualityClass(balanceResult.qualityScore)]">
+              {{ (balanceResult.qualityScore * 100).toFixed(1) }}%
+            </span>
+          </div>
         </div>
         
-        <div 
-          v-for="(team, index) in balanceResult.teams" 
-          :key="index"
-          class="team-card"
-        >
-          <h4>팀 {{ index + 1 }} (점수: {{ team.totalScore.toFixed(1) }})</h4>
+        <div class="teams-container">
           <div 
-            v-for="(player, playerIndex) in team.players" 
-            :key="playerIndex"
-            :class="['team-player', { 'captain': isCaptain(index, playerIndex) }]"
-            @click="selectCaptain(index, playerIndex)"
+            v-for="(team, index) in balanceResult.teams" 
+            :key="index"
+            class="team-card"
           >
-            <div class="captain-selector">
-              <span v-if="isCaptain(index, playerIndex)" class="captain-badge">👑</span>
-              <span v-else class="captain-select">선택</span>
+            <div class="team-header">
+              <h4 class="team-title">팀 {{ index + 1 }}</h4>
+              <div class="team-score">점수: {{ team.totalScore.toFixed(1) }}</div>
             </div>
-            <span class="player-name">{{ player.name }}</span>
-            <span :class="['tier-badge', getTierClass(player.tier)]">
-              {{ player.tier || 'UNRANKED' }}{{ player.rank || '' }}
-            </span>
-            <span class="lane-info">
-              <span class="main-lane">
-                {{ getLaneIcon(player.mainLane) }} {{ player.mainLane || 'UNKNOWN' }}
-              </span>
-              <span v-if="player.preferredLanes && player.preferredLanes.length > 0" class="preferred-lanes">
-                (희망: {{ player.preferredLanes.join(', ') }})
-              </span>
-            </span>
+            <div class="team-players">
+              <div 
+                v-for="(player, playerIndex) in team.players" 
+                :key="playerIndex"
+                :class="['team-player', { 'captain': isCaptain(index, playerIndex) }]"
+                @click="selectCaptain(index, playerIndex)"
+              >
+                <div class="captain-selector">
+                  <span v-if="isCaptain(index, playerIndex)" class="captain-badge">👑</span>
+                  <span v-else class="captain-select">선택</span>
+                </div>
+                <div class="player-info">
+                  <div class="player-name">{{ player.name }}</div>
+                  <div class="player-details">
+                    <span :class="['tier-badge', getTierClass(player.tier)]">
+                      {{ player.tier || 'UNRANKED' }}{{ player.rank || '' }}
+                    </span>
+                    <span class="lane-info">
+                      <span class="main-lane">
+                        {{ getLaneIcon(player.mainLane) }} {{ player.mainLane || 'UNKNOWN' }}
+                      </span>
+                      <span v-if="player.preferredLanes && player.preferredLanes.length > 0" class="preferred-lanes">
+                        (희망: {{ player.preferredLanes.join(', ') }})
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -117,95 +150,43 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-
-interface Match {
-  id: number
-  customId: string
-}
+import { ref, onMounted } from 'vue'
 
 interface Player {
   id?: number
   name: string
-  tier?: string
-  rank?: string
-  mainLane?: string
-  preferredLanes?: string[]
-  mmr?: number
+  tier: string
+  rank: string
+  mainLane: string
+  preferredLanes: string[]
 }
 
-interface Team {
-  players: Player[]
-  totalScore: number
-  lanes: Record<string, Player | null>
+interface Match {
+  id: number
+  customId: string
+  host: string
+  type: string
+  status: string
+  createdAt: string
 }
 
 interface BalanceResult {
-  teams: Team[]
+  teams: Array<{
+    players: Player[]
+    totalScore: number
+  }>
   qualityScore: number
 }
 
-const loading = ref(false)
 const matches = ref<Match[]>([])
-const selectedMatchId = ref<number | null>(null)
 const participants = ref<Player[]>([])
+const selectedMatchId = ref<number | null>(null)
 const selectedParticipantIds = ref<number[]>([])
+const loading = ref(false)
 const balanceResult = ref<BalanceResult | null>(null)
-const teamCaptains = ref<Record<number, number>>({})
+const teamCaptains = ref<Record<string, number>>({})
 
 const API_BASE_URL = 'http://localhost:4000/api'
-
-const balanceTeams = (players: Player[], options: { teamSize: number }): BalanceResult => {
-  const { teamSize = 5 } = options
-  const numTeams = Math.floor(players.length / teamSize)
-  
-  if (numTeams < 2) {
-    return { teams: [], qualityScore: 0 }
-  }
-
-  const TIER_SCORES: Record<string, number> = {
-    IRON: 1, I: 1,
-    BRONZE: 2, B: 2,
-    SILVER: 3, S: 3,
-    GOLD: 4, G: 4,
-    PLATINUM: 5, P: 5,
-    EMERALD: 6, E: 6,
-    DIAMOND: 7, D: 7,
-    MASTER: 8, M: 8,
-    GRANDMASTER: 9, GM: 9,
-    CHALLENGER: 10, C: 10,
-    UNRANKED: 3,
-  }
-
-  const getPlayerScore = (player: Player): number => {
-    if (player.mmr) return player.mmr
-    const tierScore = TIER_SCORES[player.tier?.toUpperCase() || 'UNRANKED'] || 3
-    const rankScore = player.rank ? (5 - parseInt(player.rank, 10)) * 0.2 : 0
-    return tierScore + rankScore
-  }
-
-  const scoredPlayers = players.map(p => ({ ...p, score: getPlayerScore(p) }))
-    .sort((a, b) => b.score - a.score)
-
-  const teams: Team[] = Array.from({ length: numTeams }, () => ({ 
-    players: [], 
-    totalScore: 0, 
-    lanes: {} 
-  }))
-
-  scoredPlayers.forEach(player => {
-    const teamWithLowestScore = teams.sort((a, b) => a.totalScore - b.totalScore)[0]
-    teamWithLowestScore.players.push(player)
-    teamWithLowestScore.totalScore += player.score
-  })
-
-  const totalScores = teams.map(t => t.totalScore)
-  const minScore = Math.min(...totalScores)
-  const maxScore = Math.max(...totalScores)
-  const qualityScore = 1 - (maxScore - minScore) / (maxScore || 1)
-
-  return { teams, qualityScore }
-}
 
 const fetchMatches = async () => {
   try {
@@ -214,32 +195,22 @@ const fetchMatches = async () => {
     matches.value = data
   } catch (error) {
     console.error('Failed to fetch matches:', error)
+    matches.value = []
   }
 }
 
-const fetchParticipants = async (matchId: number) => {
+const selectMatch = async (matchId: number) => {
+  selectedMatchId.value = matchId
   try {
     const response = await fetch(`${API_BASE_URL}/matches/${matchId}/participants`)
     const data = await response.json()
-    console.log('Fetched participants:', data) // 디버깅용
     participants.value = data
-    selectedParticipantIds.value = data.map((p: Player) => p.id!).filter(Boolean)
+    selectedParticipantIds.value = []
+    balanceResult.value = null
+    teamCaptains.value = {}
   } catch (error) {
     console.error('Failed to fetch participants:', error)
-  }
-}
-
-const selectMatch = (matchId: number) => {
-  selectedMatchId.value = matchId
-  fetchParticipants(matchId)
-  balanceResult.value = null
-}
-
-const toggleSelectAllParticipants = () => {
-  if (selectedParticipantIds.value.length === participants.value.length) {
-    selectedParticipantIds.value = []
-  } else {
-    selectedParticipantIds.value = participants.value.map(p => p.id!).filter(Boolean)
+    participants.value = []
   }
 }
 
@@ -252,70 +223,120 @@ const toggleParticipant = (playerId: number) => {
   }
 }
 
+const toggleSelectAllParticipants = () => {
+  if (selectedParticipantIds.value.length === participants.value.length) {
+    selectedParticipantIds.value = []
+  } else {
+    selectedParticipantIds.value = participants.value.map(p => p.id!).filter(id => id !== undefined)
+  }
+}
+
 const runBalance = async () => {
   if (selectedParticipantIds.value.length < 10) {
-    alert('최소 10명의 참가자가 필요합니다.')
+    alert('최소 10명의 참가자를 선택해주세요.')
     return
   }
 
   loading.value = true
   
   try {
-    const selectedParticipants = participants.value.filter(p => selectedParticipantIds.value.includes(p.id!))
-    const result = balanceTeams(selectedParticipants, { teamSize: 5 })
-    balanceResult.value = result
+    const selectedPlayers = participants.value.filter(p => 
+      selectedParticipantIds.value.includes(p.id!)
+    )
+    
+    // 간단한 밸런싱 알고리즘 (그리디)
+    const shuffled = [...selectedPlayers].sort(() => Math.random() - 0.5)
+    const team1: Player[] = []
+    const team2: Player[] = []
+    
+    // 라인별로 분배
+    const team1Lanes = new Set<string>()
+    const team2Lanes = new Set<string>()
+    
+    for (const player of shuffled) {
+      const mainLane = player.mainLane
+      
+      if (team1Lanes.has(mainLane) && !team2Lanes.has(mainLane)) {
+        team2.push(player)
+        team2Lanes.add(mainLane)
+      } else if (team2Lanes.has(mainLane) && !team1Lanes.has(mainLane)) {
+        team1.push(player)
+        team1Lanes.add(mainLane)
+      } else if (team1.length <= team2.length) {
+        team1.push(player)
+        team1Lanes.add(mainLane)
+      } else {
+        team2.push(player)
+        team2Lanes.add(mainLane)
+      }
+    }
+    
+    // 점수 계산 (간단한 예시)
+    const calculateScore = (players: Player[]) => {
+      return players.reduce((sum, player) => {
+        const tierScores: Record<string, number> = {
+          'CHALLENGER': 10, 'GRANDMASTER': 9, 'MASTER': 8,
+          'DIAMOND': 7, 'PLATINUM': 6, 'GOLD': 5,
+          'SILVER': 4, 'BRONZE': 3, 'IRON': 2, 'UNRANKED': 1
+        }
+        return sum + (tierScores[player.tier] || 1)
+      }, 0)
+    }
+    
+    const team1Score = calculateScore(team1)
+    const team2Score = calculateScore(team2)
+    const totalScore = team1Score + team2Score
+    const qualityScore = 1 - Math.abs(team1Score - team2Score) / totalScore
+    
+    balanceResult.value = {
+      teams: [
+        { players: team1, totalScore: team1Score },
+        { players: team2, totalScore: team2Score }
+      ],
+      qualityScore
+    }
+    
+    // 팀장 초기화
+    teamCaptains.value = {}
   } catch (error) {
+    console.error('Balance error:', error)
     alert('밸런싱 중 오류가 발생했습니다.')
   } finally {
     loading.value = false
   }
 }
 
-const getQualityClass = (score: number) => {
-  if (score > 0.8) return 'quality-good'
-  if (score > 0.6) return 'quality-medium'
-  return 'quality-bad'
-}
-
-const getTierClass = (tier?: string) => {
-  if (!tier) return 'tier-unranked'
-  const tierUpper = tier.toUpperCase()
-  
-  switch (tierUpper) {
-    case 'IRON': case 'I': return 'tier-iron'
-    case 'BRONZE': case 'B': return 'tier-bronze'
-    case 'SILVER': case 'S': return 'tier-silver'
-    case 'GOLD': case 'G': return 'tier-gold'
-    case 'PLATINUM': case 'P': return 'tier-platinum'
-    case 'EMERALD': case 'E': return 'tier-emerald'
-    case 'DIAMOND': case 'D': return 'tier-diamond'
-    case 'MASTER': case 'M': return 'tier-master'
-    case 'GRANDMASTER': case 'GM': return 'tier-grandmaster'
-    case 'CHALLENGER': case 'C': return 'tier-challenger'
-    default: return 'tier-unranked'
-  }
-}
-
-const getLaneIcon = (lane?: string) => {
-  if (!lane) return '❓'
-  const laneUpper = lane.toUpperCase()
-  
-  switch (laneUpper) {
-    case 'TOP': return '⚔️'
-    case 'JUNGLE': return '🌿'
-    case 'MID': return '⚡'
-    case 'ADC': case 'BOT': return '🏹'
-    case 'SUPPORT': return '🛡️'
-    default: return '❓'
-  }
-}
-
 const selectCaptain = (teamIndex: number, playerIndex: number) => {
-  teamCaptains.value[teamIndex] = playerIndex
+  const teamKey = `team${teamIndex}`
+  teamCaptains.value[teamKey] = playerIndex
 }
 
 const isCaptain = (teamIndex: number, playerIndex: number): boolean => {
-  return teamCaptains.value[teamIndex] === playerIndex
+  const teamKey = `team${teamIndex}`
+  return teamCaptains.value[teamKey] === playerIndex
+}
+
+const getTierClass = (tier: string): string => {
+  if (!tier) return 'tier-unranked'
+  return `tier-${tier.toLowerCase()}`
+}
+
+const getLaneIcon = (lane: string): string => {
+  const icons: Record<string, string> = {
+    'TOP': '🏔️',
+    'JUNGLE': '🌲',
+    'MID': '⚔️',
+    'ADC': '🏹',
+    'SUPPORT': '🛡️',
+    'UNKNOWN': '❓'
+  }
+  return icons[lane] || '❓'
+}
+
+const getQualityClass = (score: number): string => {
+  if (score >= 0.8) return 'quality-good'
+  if (score >= 0.6) return 'quality-medium'
+  return 'quality-poor'
 }
 
 onMounted(() => {
@@ -325,282 +346,491 @@ onMounted(() => {
 
 <style scoped>
 .balance {
-  max-width: 800px;
+  max-width: 1200px;
   margin: 0 auto;
+  padding: 0 1rem;
 }
 
-.balance h2 {
-  color: #333;
-  margin-bottom: 1.5rem;
+.page-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(139, 69, 19, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 196, 168, 0.3);
 }
 
-.form {
-  background: white;
+.page-title {
+  color: #8B4513;
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.page-subtitle {
+  color: #A0522D;
+  margin: 0;
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+.form-container {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(139, 69, 19, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 196, 168, 0.3);
+}
+
+.form-section {
+  margin-bottom: 2.5rem;
+}
+
+.section-title {
+  color: #8B4513;
+  margin: 0 0 1.5rem 0;
+  font-size: 1.3rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+  border-bottom: 2px solid #d4c4a8;
+  padding-bottom: 0.5rem;
+}
+
+.match-selection {
+  background: rgba(245, 241, 232, 0.5);
   padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 15px;
+  border: 1px solid rgba(212, 196, 168, 0.3);
 }
 
-.form-group {
-  margin-bottom: 1.5rem;
+.match-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: bold;
-  color: #333;
-}
-
-.match-list {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.match-btn {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
+.match-card {
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid #d4c4a8;
+  border-radius: 12px;
+  padding: 1rem;
   cursor: pointer;
-  transition: all 0.3s;
-}
-
-.match-btn:hover {
-  background: #f5f5f5;
-}
-
-.match-btn.active {
-  background: #2196F3;
-  color: white;
-  border-color: #2196F3;
-}
-
-.player-list {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.select-all-btn {
-  width: 100%;
-  padding: 0.5rem;
-  border: none;
-  background: #f5f5f5;
-  cursor: pointer;
-  font-weight: bold;
-  color: #2196F3;
-}
-
-.player-item {
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  padding: 0.75rem;
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
+  gap: 1rem;
+  text-align: left;
 }
 
-.player-item:hover {
-  background: #f9f9f9;
+.match-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.2);
+  border-color: #8B4513;
 }
 
-.checkbox {
-  margin-right: 0.75rem;
+.match-card.active {
+  background: rgba(139, 69, 19, 0.1);
+  border-color: #8B4513;
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.2);
+}
+
+.match-icon {
+  font-size: 1.5rem;
+  color: #8B4513;
+}
+
+.match-info {
+  flex: 1;
+}
+
+.match-id {
+  font-weight: bold;
+  color: #8B4513;
+  font-size: 1rem;
+  margin-bottom: 0.2rem;
+}
+
+.match-details {
+  font-size: 0.85rem;
+  color: #A0522D;
+  opacity: 0.8;
+}
+
+.participants-container {
+  background: rgba(245, 241, 232, 0.5);
+  padding: 1.5rem;
+  border-radius: 15px;
+  border: 1px solid rgba(212, 196, 168, 0.3);
+}
+
+.participants-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(212, 196, 168, 0.5);
+}
+
+.participants-count {
+  color: #8B4513;
+  font-weight: bold;
   font-size: 1.1rem;
 }
 
-.player-text {
+.select-all-btn {
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid #d4c4a8;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  color: #8B4513;
+  font-weight: 500;
+}
+
+.select-all-btn:hover {
+  background: rgba(139, 69, 19, 0.1);
+  border-color: #8B4513;
+}
+
+.player-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.player-card {
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid #d4c4a8;
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.player-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.2);
+  border-color: #8B4513;
+}
+
+.player-card.selected {
+  background: rgba(139, 69, 19, 0.1);
+  border-color: #8B4513;
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.2);
+}
+
+.player-checkbox {
+  font-size: 1.2rem;
+  color: #8B4513;
+}
+
+.player-info {
   flex: 1;
 }
 
 .player-name {
-  font-weight: 600;
-  color: #333;
-  min-width: 120px;
+  font-weight: bold;
+  color: #8B4513;
+  margin-bottom: 0.3rem;
+  font-size: 1rem;
+}
+
+.player-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 .tier-badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
   font-size: 0.8rem;
   font-weight: bold;
   color: white;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  margin-right: 0.5rem;
 }
 
-.lane-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.main-lane {
-  font-weight: 500;
-  color: #555;
-}
-
-.preferred-lanes {
-  font-size: 0.75rem;
-  color: #888;
-  font-style: italic;
-}
-
-/* 티어별 색상 */
 .tier-iron { background: #8B4513; }
 .tier-bronze { background: #CD7F32; }
 .tier-silver { background: #C0C0C0; color: #333; }
 .tier-gold { background: #FFD700; color: #333; }
 .tier-platinum { background: #00CED1; }
-.tier-emerald { background: #50C878; }
 .tier-diamond { background: #B9F2FF; color: #333; }
 .tier-master { background: #8A2BE2; }
 .tier-grandmaster { background: #FF4500; }
 .tier-challenger { background: #FFD700; color: #333; }
 .tier-unranked { background: #666; }
 
-.button-row {
+.lane-info {
+  font-size: 0.85rem;
+  color: #A0522D;
+}
+
+.main-lane {
+  font-weight: 500;
+  margin-right: 0.5rem;
+}
+
+.preferred-lanes {
+  font-size: 0.8rem;
+  color: #8B4513;
+  opacity: 0.7;
+}
+
+.form-actions {
+  text-align: center;
+  margin: 2rem 0;
+  padding: 2rem 0;
+  border-top: 1px solid rgba(212, 196, 168, 0.5);
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
+  gap: 1rem;
+  justify-content: center;
 }
 
 .balance-btn {
-  flex: 1;
-  background: #2196F3;
+  background: linear-gradient(135deg, #8B4513, #A0522D);
   color: white;
   border: none;
-  padding: 0.75rem;
-  border-radius: 4px;
+  padding: 1.2rem 3rem;
+  border-radius: 15px;
   cursor: pointer;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(139, 69, 19, 0.3);
+}
+
+.balance-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(139, 69, 19, 0.4);
 }
 
 .balance-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-icon {
+  font-size: 1.1rem;
+}
+
+.btn-text {
+  font-weight: 500;
 }
 
 .balance-result {
-  margin-top: 1.5rem;
+  margin-top: 2rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(139, 69, 19, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 196, 168, 0.3);
+}
+
+.result-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #d4c4a8;
+}
+
+.result-title {
+  color: #8B4513;
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .quality-score {
-  background: #f5f5f5;
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
-  display: flex;
-  justify-content: space-between;
+  background: rgba(245, 241, 232, 0.8);
+  padding: 1rem 2rem;
+  border-radius: 15px;
+  display: inline-flex;
   align-items: center;
+  gap: 1rem;
+  border: 1px solid rgba(212, 196, 168, 0.5);
 }
 
 .quality-label {
   font-weight: bold;
+  color: #8B4513;
+  font-size: 1rem;
 }
 
 .quality-value {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   font-weight: bold;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
 }
 
 .quality-good {
   color: #4CAF50;
+  background: rgba(76, 175, 80, 0.1);
 }
 
 .quality-medium {
   color: #FF9800;
+  background: rgba(255, 152, 0, 0.1);
 }
 
-.quality-bad {
-  color: #F44336;
+.quality-poor {
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.1);
+}
+
+.teams-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
 }
 
 .team-card {
-  background: #f9f9f9;
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
-  border: 1px solid #ddd;
+  background: rgba(245, 241, 232, 0.5);
+  border: 2px solid #d4c4a8;
+  border-radius: 15px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
 }
 
-.team-card h4 {
-  margin: 0 0 0.5rem 0;
-  color: #333;
+.team-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(139, 69, 19, 0.2);
+}
+
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(212, 196, 168, 0.5);
+}
+
+.team-title {
+  color: #8B4513;
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.team-score {
+  color: #A0522D;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.3rem 0.8rem;
+  border-radius: 8px;
+}
+
+.team-players {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
 }
 
 .team-player {
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid #d4c4a8;
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
-  background: white;
-  border-radius: 4px;
-  border: 1px solid #eee;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  gap: 1rem;
 }
 
 .team-player:hover {
-  background: #f5f5f5;
-  border-color: #ddd;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.2);
+  border-color: #8B4513;
 }
 
 .team-player.captain {
-  background: #fff3cd;
+  background: rgba(255, 193, 7, 0.2);
   border-color: #ffc107;
-  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.2);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
 }
 
 .captain-selector {
-  min-width: 40px;
+  min-width: 60px;
   text-align: center;
 }
 
 .captain-badge {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   color: #ffc107;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .captain-select {
-  font-size: 0.7rem;
-  color: #666;
-  padding: 0.2rem 0.4rem;
-  background: #f8f9fa;
-  border-radius: 3px;
-  border: 1px solid #dee2e6;
+  font-size: 0.8rem;
+  color: #8B4513;
+  padding: 0.3rem 0.6rem;
+  background: rgba(139, 69, 19, 0.1);
+  border-radius: 6px;
+  font-weight: 500;
 }
 
-.captain-select:hover {
-  background: #e9ecef;
-  color: #495057;
+.team-player.captain .captain-select {
+  background: #ffc107;
+  color: #8B4513;
+  font-weight: bold;
 }
 
-.team-player .player-name {
-  min-width: 100px;
-  font-weight: 600;
-}
-
-.team-player.captain .player-name {
-  color: #856404;
-}
-
-.team-player .tier-badge {
-  font-size: 0.7rem;
-  padding: 0.2rem 0.4rem;
-}
-
-.team-player .lane-info {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.team-player .preferred-lanes {
-  font-size: 0.7rem;
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .match-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .player-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .teams-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .participants-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .page-title {
+    font-size: 1.5rem;
+  }
+  
+  .form-container {
+    padding: 1.5rem;
+  }
 }
 </style>
