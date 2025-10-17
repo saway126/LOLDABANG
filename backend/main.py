@@ -13,12 +13,8 @@ app = FastAPI(title="LoL Custom Match Tool API", version="1.0.0")
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://loldabang.vercel.app",
-        "https://loldabang-*.vercel.app"
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],  # 모든 도메인 허용
+    allow_credentials=False,  # credentials가 true면 allow_origins에 "*" 사용 불가
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
