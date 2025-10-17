@@ -129,6 +129,11 @@ const kakaoText = ref('')
 const parsedPlayers = ref<Player[]>([])
 const selectedPlayers = ref<string[]>([])
 
+// 환경에 따라 API URL 설정
+const API_BASE_URL = import.meta.env.DEV 
+  ? 'http://localhost:4000/api' 
+  : 'https://backend-420yxco5z-skwka12346-gmailcoms-projects.vercel.app/api'
+
 const matchForm = reactive({
   customId: '',
   host: '',
@@ -342,7 +347,7 @@ const createMatch = async () => {
   )
   
   try {
-    const response = await fetch('http://localhost:4000/api/matches', {
+    const response = await fetch(`${API_BASE_URL}/matches`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -186,7 +186,10 @@ const loading = ref(false)
 const balanceResult = ref<BalanceResult | null>(null)
 const teamCaptains = ref<Record<string, number>>({})
 
-const API_BASE_URL = 'http://localhost:4000/api'
+// 환경에 따라 API URL 설정
+const API_BASE_URL = import.meta.env.DEV 
+  ? 'http://localhost:4000/api' 
+  : 'https://backend-420yxco5z-skwka12346-gmailcoms-projects.vercel.app/api'
 
 const fetchMatches = async () => {
   try {
