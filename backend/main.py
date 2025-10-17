@@ -48,14 +48,9 @@ def init_db():
     conn = sqlite3.connect('loldabang.db')
     cursor = conn.cursor()
     
-    # 기존 테이블 삭제
-    cursor.execute("DROP TABLE IF EXISTS participants")
-    cursor.execute("DROP TABLE IF EXISTS matches")
-    cursor.execute("DROP TABLE IF EXISTS players")
-    
-    # 테이블 생성
+    # 테이블 생성 (IF NOT EXISTS 사용)
     cursor.execute("""
-        CREATE TABLE players (
+        CREATE TABLE IF NOT EXISTS players (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             tier TEXT,
@@ -68,7 +63,7 @@ def init_db():
     """)
     
     cursor.execute("""
-        CREATE TABLE matches (
+        CREATE TABLE IF NOT EXISTS matches (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             customId TEXT NOT NULL UNIQUE,
             host TEXT NOT NULL,
@@ -79,7 +74,7 @@ def init_db():
     """)
     
     cursor.execute("""
-        CREATE TABLE participants (
+        CREATE TABLE IF NOT EXISTS participants (
             matchId INTEGER NOT NULL,
             playerId INTEGER NOT NULL,
             status TEXT DEFAULT 'waiting',
@@ -301,45 +296,70 @@ async def create_match(match_data: MatchCreate):
 
 @app.get("/api/matches/recent")
 async def get_recent_matches():
-    conn = sqlite3.connect('loldabang.db')
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT id, customId FROM matches ORDER BY createdAt DESC LIMIT 5")
-    rows = cursor.fetchall()
-    conn.close()
-    
-    return [{"id": row[0], "customId": row[1]} for row in rows]
+    try:
+        conn = sqlite3.connect('loldabang.db')
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT m.id, m.customId, m.host, m.type, m.status, m.createdAt,
+                   COUNT(p.playerId) as participantCount
+            FROM matches m
+            LEFT JOIN participants p ON m.id = p.matchId
+            GROUP BY m.id, m.customId, m.host, m.type, m.status, m.createdAt
+            ORDER BY m.createdAt DESC
+            LIMIT 10
+        """)
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [MatchResponse(
+            id=row[0],
+            customId=row[1],
+            host=row[2],
+            type=row[3],
+            status=row[4],
+            createdAt=row[5],
+            participantCount=row[6]
+        ) for row in rows]
+    except Exception as e:
+        print(f"Database error in get_recent_matches: {e}")
+        return []
 
 @app.get("/api/matches/by-type/{match_type}")
 async def get_matches_by_type(match_type: str):
     if match_type not in ['soft', 'hard', 'hyper']:
         raise HTTPException(status_code=400, detail="Invalid match type")
     
-    conn = sqlite3.connect('loldabang.db')
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        SELECT m.id, m.customId, m.host, m.type, m.status, m.createdAt,
-               COUNT(p.playerId) as participantCount
-        FROM matches m
-        LEFT JOIN participants p ON m.id = p.matchId
-        WHERE m.type = ?
-        GROUP BY m.id, m.customId, m.host, m.type, m.status, m.createdAt
-        ORDER BY m.createdAt DESC
-    """, (match_type,))
-    
-    rows = cursor.fetchall()
-    conn.close()
-    
-    return [MatchResponse(
-        id=row[0],
-        customId=row[1],
-        host=row[2],
-        type=row[3],
-        status=row[4],
-        createdAt=row[5],
-        participantCount=row[6]
-    ) for row in rows]
+    try:
+        conn = sqlite3.connect('loldabang.db')
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT m.id, m.customId, m.host, m.type, m.status, m.createdAt,
+                   COUNT(p.playerId) as participantCount
+            FROM matches m
+            LEFT JOIN participants p ON m.id = p.matchId
+            WHERE m.type = ?
+            GROUP BY m.id, m.customId, m.host, m.type, m.status, m.createdAt
+            ORDER BY m.createdAt DESC
+        """, (match_type,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [MatchResponse(
+            id=row[0],
+            customId=row[1],
+            host=row[2],
+            type=row[3],
+            status=row[4],
+            createdAt=row[5],
+            participantCount=row[6]
+        ) for row in rows]
+    except Exception as e:
+        print(f"Database error in get_matches_by_type: {e}")
+        return []
 
 @app.get("/api/matches/{match_id}/participants")
 async def get_match_participants(match_id: int):
