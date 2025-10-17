@@ -48,9 +48,21 @@
           <div class="form-group">
             <div class="form-label-row">
               <label class="form-label">댓글 텍스트 입력</label>
-              <button type="button" @click="pasteFromClipboard" class="paste-btn">
-                📋 클립보드에서 붙여넣기
-              </button>
+              <div class="input-buttons">
+                <button type="button" @click="pasteFromClipboard" class="paste-btn">
+                  📋 클립보드에서 붙여넣기
+                </button>
+                <button type="button" @click="triggerImageUpload" class="image-btn">
+                  📷 이미지에서 추출
+                </button>
+                <input 
+                  ref="imageInput" 
+                  type="file" 
+                  accept="image/*" 
+                  @change="handleImageUpload" 
+                  style="display: none"
+                />
+              </div>
             </div>
             <textarea 
               v-model="kakaoText"
@@ -58,9 +70,9 @@
               class="form-textarea"
               rows="6"
             ></textarea>
-            <button type="button" @click="parseText" class="parse-btn">
-              <span class="btn-icon">🔍</span>
-              <span class="btn-text">파싱하기</span>
+            <button type="button" @click="parseText" class="parse-btn" :disabled="ocrLoading">
+              <span class="btn-icon">{{ ocrLoading ? '⏳' : '🔍' }}</span>
+              <span class="btn-text">{{ ocrLoading ? 'OCR 처리 중...' : '파싱하기' }}</span>
             </button>
           </div>
         </div>
@@ -133,6 +145,8 @@ const loading = ref(false)
 const kakaoText = ref('')
 const parsedPlayers = ref<Player[]>([])
 const selectedPlayers = ref<string[]>([])
+const imageInput = ref<HTMLInputElement | null>(null)
+const ocrLoading = ref(false)
 
 // 환경에 따라 API URL 설정
 const API_BASE_URL = import.meta.env.DEV 
@@ -155,6 +169,68 @@ const pasteFromClipboard = async () => {
   } catch (err) {
     console.error('클립보드 접근 실패:', err)
     alert('클립보드 접근에 실패했습니다. 수동으로 붙여넣기 해주세요.')
+  }
+}
+
+// 이미지 업로드 트리거
+const triggerImageUpload = () => {
+  imageInput.value?.click()
+}
+
+// 이미지 업로드 처리
+const handleImageUpload = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) return
+  
+  // 이미지 파일 검증
+  if (!file.type.startsWith('image/')) {
+    alert('이미지 파일만 업로드 가능합니다.')
+    return
+  }
+  
+  ocrLoading.value = true
+  
+  try {
+    // Tesseract.js 동적 로드
+    // @ts-ignore
+    const Tesseract = (await import('tesseract.js')).default
+    
+    // 이미지를 Canvas로 변환
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    const img = new Image()
+    
+    img.onload = async () => {
+      canvas.width = img.width
+      canvas.height = img.height
+      ctx?.drawImage(img, 0, 0)
+      
+      // OCR 실행
+      const { data: { text } } = await Tesseract.recognize(
+        canvas.toDataURL('image/png'),
+        'kor+eng', // 한국어 + 영어
+        {
+          logger: (m: any) => console.log(m)
+        }
+      )
+      
+      // 추출된 텍스트를 textarea에 설정
+      kakaoText.value = text
+      
+      // 자동으로 파싱 실행
+      parseText()
+      
+      ocrLoading.value = false
+    }
+    
+    img.src = URL.createObjectURL(file)
+    
+  } catch (error) {
+    console.error('OCR 처리 실패:', error)
+    alert('이미지에서 텍스트를 추출하는데 실패했습니다.')
+    ocrLoading.value = false
   }
 }
 
@@ -718,6 +794,12 @@ const createMatch = async () => {
   margin-bottom: 0.5rem;
 }
 
+.input-buttons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .paste-btn {
   background: linear-gradient(135deg, #8B4513, #A0522D);
   color: white;
@@ -735,5 +817,30 @@ const createMatch = async () => {
   background: linear-gradient(135deg, #A0522D, #8B4513);
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(139, 69, 19, 0.3);
+}
+
+.image-btn {
+  background: linear-gradient(135deg, #4A90E2, #357ABD);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(74, 144, 226, 0.2);
+}
+
+.image-btn:hover {
+  background: linear-gradient(135deg, #357ABD, #4A90E2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(74, 144, 226, 0.3);
+}
+
+.parse-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 </style>
