@@ -8,13 +8,12 @@ import json
 import re
 from datetime import datetime
 import uvicorn
+import os
 
 app = FastAPI(title="LoL Custom Match Tool API", version="1.0.0")
 
-# 앱 시작 시 데이터베이스 초기화
-@app.on_event("startup")
-async def startup_event():
-    init_db()
+# 데이터베이스 파일 경로 설정 (Vercel 환경에 맞게)
+DB_PATH = os.path.join(os.path.dirname(__file__), 'loldabang.db')
 
 # CORS 설정
 app.add_middleware(
@@ -29,7 +28,7 @@ app.add_middleware(
 
 # 데이터베이스 초기화
 def init_db():
-    conn = sqlite3.connect('loldabang.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     # 테이블 생성 (IF NOT EXISTS 사용)
@@ -228,7 +227,7 @@ async def parse_kakao_talk_endpoint(request: dict):
 @app.post("/api/matches")
 async def create_match(match_data: MatchCreate):
     print(f"Received match data: {match_data}")
-    conn = sqlite3.connect('loldabang.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     try:
@@ -281,7 +280,7 @@ async def create_match(match_data: MatchCreate):
 @app.get("/api/matches/recent")
 async def get_recent_matches():
     try:
-        conn = sqlite3.connect('loldabang.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -316,7 +315,7 @@ async def get_matches_by_type(match_type: str):
         raise HTTPException(status_code=400, detail="Invalid match type")
     
     try:
-        conn = sqlite3.connect('loldabang.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -347,7 +346,7 @@ async def get_matches_by_type(match_type: str):
 
 @app.get("/api/matches/{match_id}/participants")
 async def get_match_participants(match_id: int):
-    conn = sqlite3.connect('loldabang.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     cursor.execute("""
@@ -373,9 +372,11 @@ async def get_match_participants(match_id: int):
     
     return participants
 
+# 앱 시작 시 데이터베이스 초기화
+init_db()
+
 # Vercel 핸들러
 handler = app
 
 if __name__ == "__main__":
-    init_db()
     uvicorn.run(app, host="0.0.0.0", port=4000)
