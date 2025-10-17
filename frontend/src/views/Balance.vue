@@ -189,7 +189,7 @@ const teamCaptains = ref<Record<string, number>>({})
 // 환경에 따라 API URL 설정
 const API_BASE_URL = import.meta.env.DEV 
   ? 'http://localhost:4000/api' 
-  : 'https://backend-gra76l5e2-skwka12346-gmailcoms-projects.vercel.app/api'
+  : 'https://backend-fvc5j1tr6-skwka12346-gmailcoms-projects.vercel.app/api'
 
 const fetchMatches = async () => {
   try {

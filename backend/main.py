@@ -11,6 +11,11 @@ import uvicorn
 
 app = FastAPI(title="LoL Custom Match Tool API", version="1.0.0")
 
+# 앱 시작 시 데이터베이스 초기화
+@app.on_event("startup")
+async def startup_event():
+    init_db()
+
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
@@ -388,6 +393,9 @@ async def get_match_participants(match_id: int):
         })
     
     return participants
+
+# Vercel 핸들러
+handler = app
 
 if __name__ == "__main__":
     init_db()
