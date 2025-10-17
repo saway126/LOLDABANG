@@ -218,7 +218,12 @@ def parse_kakao_talk(text: str) -> dict:
 # API 엔드포인트들
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok"}
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.close()
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        return {"status": "error", "database": "failed", "error": str(e)}
 
 @app.get("/")
 async def root():
