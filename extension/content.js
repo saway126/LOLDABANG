@@ -3,43 +3,15 @@ console.log('롤다방 Extension Content Script 시작');
 
 class LoldabangExtension {
   constructor() {
-    this.port = null;
     this.init();
   }
 
   init() {
-    this.createPort();
     this.setupMessageListener();
     this.injectAPIHelpers();
+    this.testAPI();
   }
 
-  createPort() {
-    try {
-      if (this.port) {
-        try {
-          this.port.disconnect();
-        } catch (e) {
-          // Port already disconnected
-        }
-      }
-      
-      this.port = chrome.runtime.connect({ name: 'loldabang-extension' });
-      
-      this.port.onDisconnect.addListener(() => {
-        console.log('Port disconnected, attempting to reconnect...');
-        this.port = null;
-        setTimeout(() => this.createPort(), 2000);
-      });
-      
-      this.port.onMessage.addListener((message) => {
-        console.log('Message from background:', message);
-      });
-    } catch (error) {
-      console.error('Failed to create port:', error);
-      this.port = null;
-      setTimeout(() => this.createPort(), 2000);
-    }
-  }
 
   setupMessageListener() {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -51,6 +23,17 @@ class LoldabangExtension {
         return true;
       }
     });
+  }
+
+  async testAPI() {
+    try {
+      console.log('롤다방 API 테스트 시작...');
+      const response = await fetch('https://loldabang-production.up.railway.app/api/health');
+      const data = await response.json();
+      console.log('롤다방 API 연결 성공:', data);
+    } catch (error) {
+      console.error('롤다방 API 연결 실패:', error);
+    }
   }
 
   async fetchMatches(matchType) {

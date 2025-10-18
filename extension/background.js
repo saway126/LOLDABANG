@@ -5,37 +5,6 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed');
 });
 
-// 안전한 포트 연결 관리
-let port = null;
-
-function createPort() {
-  if (port) {
-    try {
-      port.disconnect();
-    } catch (e) {
-      console.log('Port already disconnected');
-    }
-  }
-  
-  port = chrome.runtime.connect({ name: 'loldabang-extension' });
-  
-  port.onDisconnect.addListener(() => {
-    console.log('Port disconnected, recreating...');
-    setTimeout(createPort, 1000);
-  });
-  
-  port.onMessage.addListener((message) => {
-    console.log('Message received:', message);
-  });
-}
-
-// 페이지 로드 시 포트 생성
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete' && tab.url) {
-    createPort();
-  }
-});
-
 // API 호출 함수
 async function callAPI(endpoint) {
   const API_BASE_URL = 'https://loldabang-production.up.railway.app/api';
