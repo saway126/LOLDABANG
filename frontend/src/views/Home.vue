@@ -68,6 +68,11 @@
           <div class="match-status" :class="match.status">
             {{ getStatusText(match.status) }}
           </div>
+          <div class="match-actions">
+            <button @click="viewMatch(match)" class="action-btn view-btn">보기</button>
+            <button @click="editMatch(match)" class="action-btn edit-btn">수정</button>
+            <button @click="deleteMatch(match)" class="action-btn delete-btn">삭제</button>
+          </div>
         </div>
       </div>
     </div>
@@ -191,6 +196,50 @@ const fetchMatchCounts = async () => {
       console.error(`Failed to fetch count for ${type.key}:`, error)
       matchCounts.value[type.key] = 0
     }
+  }
+}
+
+// 내전 관리 함수들
+const viewMatch = (match: any) => {
+  // 내전 상세 보기 (모달 또는 새 페이지)
+  console.log('내전 보기:', match)
+  alert(`내전 ID: ${match.customId}\n호스트: ${match.host}\n참가자 수: ${match.participantCount}명`)
+}
+
+const editMatch = (match: any) => {
+  // 내전 수정 페이지로 이동
+  console.log('내전 수정:', match)
+  // Create 페이지로 이동하면서 수정 모드로 설정
+  window.location.href = `/create?edit=${match.id}`
+}
+
+const deleteMatch = async (match: any) => {
+  if (!confirm(`정말로 "${match.customId}" 내전을 삭제하시겠습니까?`)) {
+    return
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/matches/${match.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    
+    if (response.ok) {
+      alert('내전이 삭제되었습니다.')
+      // 내전 목록 새로고침
+      if (selectedType.value) {
+        await selectType(selectedType.value)
+      }
+      // 내전 개수 새로고침
+      await fetchMatchCounts()
+    } else {
+      throw new Error('삭제 실패')
+    }
+  } catch (error) {
+    console.error('내전 삭제 실패:', error)
+    alert('내전 삭제에 실패했습니다.')
   }
 }
 
@@ -476,6 +525,49 @@ window.addEventListener('focus', () => {
 .match-status.completed {
   background: #d1ecf1;
   color: #0c5460;
+}
+
+.match-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.action-btn {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-btn {
+  background: #007bff;
+  color: white;
+}
+
+.view-btn:hover {
+  background: #0056b3;
+}
+
+.edit-btn {
+  background: #28a745;
+  color: white;
+}
+
+.edit-btn:hover {
+  background: #1e7e34;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.delete-btn:hover {
+  background: #c82333;
 }
 
 /* 반응형 디자인 */

@@ -427,6 +427,83 @@ async def get_match_participants(match_id: int):
     
     return participants
 
+@app.put("/api/matches/{match_id}")
+async def update_match(match_id: int, match_data: dict):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    try:
+        # 내전 정보 업데이트
+        cursor.execute("""
+            UPDATE matches 
+            SET customId = ?, host = ?, type = ?, updatedAt = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (match_data['customId'], match_data['host'], match_data['type'], match_id))
+        
+        # 기존 참가자 삭제
+        cursor.execute("DELETE FROM participants WHERE matchId = ?", (match_id,))
+        
+        # 새로운 참가자 추가
+        for participant in match_data.get('participants', []):
+            # 플레이어가 이미 존재하는지 확인
+            cursor.execute("SELECT id FROM players WHERE name = ?", (participant['name'],))
+            player_row = cursor.fetchone()
+            
+            if player_row:
+                player_id = player_row[0]
+            else:
+                # 새 플레이어 생성
+                cursor.execute("""
+                    INSERT INTO players (name, tier, rank, mainLane, preferredLanes)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (
+                    participant['name'],
+                    participant.get('tier', ''),
+                    participant.get('rank', ''),
+                    participant.get('mainLane', ''),
+                    json.dumps(participant.get('preferredLanes', []))
+                ))
+                player_id = cursor.lastrowid
+            
+            # 참가자 관계 추가
+            cursor.execute("""
+                INSERT INTO participants (matchId, playerId)
+                VALUES (?, ?)
+            """, (match_id, player_id))
+        
+        conn.commit()
+        return {"message": "내전이 성공적으로 수정되었습니다."}
+        
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.delete("/api/matches/{match_id}")
+async def delete_match(match_id: int):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    try:
+        # 참가자 관계 삭제
+        cursor.execute("DELETE FROM participants WHERE matchId = ?", (match_id,))
+        
+        # 내전 삭제
+        cursor.execute("DELETE FROM matches WHERE id = ?", (match_id,))
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="내전을 찾을 수 없습니다.")
+        
+        conn.commit()
+        return {"message": "내전이 성공적으로 삭제되었습니다."}
+        
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
 # Vercel 핸들러
 handler = app
 

@@ -1,8 +1,8 @@
 <template>
   <div class="create">
     <div class="page-header">
-      <h2 class="page-title">➕ 내전 생성</h2>
-      <p class="page-subtitle">카카오톡 댓글을 파싱하여 내전을 만들어보세요</p>
+      <h2 class="page-title">{{ isEditMode ? '✏️ 내전 수정' : '➕ 내전 생성' }}</h2>
+      <p class="page-subtitle">{{ isEditMode ? '내전 정보를 수정하세요' : '카카오톡 댓글을 파싱하여 내전을 만들어보세요' }}</p>
     </div>
     
     <form @submit.prevent="createMatch" class="form-container">
@@ -131,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 
 // Tesseract.js 타입 선언
 declare global {
@@ -155,6 +155,11 @@ const selectedPlayers = ref<string[]>([])
 const imageInput = ref<HTMLInputElement | null>(null)
 const ocrLoading = ref(false)
 
+// 수정 모드 관련 변수들
+const isEditMode = ref(false)
+const editMatchId = ref<string | null>(null)
+const originalMatchData = ref<any>(null)
+
 // 환경에 따라 API URL 설정
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
   (import.meta.env.DEV 
@@ -166,6 +171,43 @@ const matchForm = reactive({
   host: '',
   type: 'soft' as 'soft' | 'hard' | 'hyper'
 })
+
+// 수정 모드 초기화
+const initializeEditMode = async () => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const editId = urlParams.get('edit')
+  
+  if (editId) {
+    isEditMode.value = true
+    editMatchId.value = editId
+    
+    try {
+      // 기존 내전 데이터 로드
+      const response = await fetch(`${API_BASE_URL}/matches/${editId}`)
+      if (response.ok) {
+        const matchData = await response.json()
+        originalMatchData.value = matchData
+        
+        // 폼에 기존 데이터 설정
+        matchForm.customId = matchData.customId
+        matchForm.host = matchData.host
+        matchForm.type = matchData.type
+        
+        // 기존 참가자 데이터 설정
+        if (matchData.participants) {
+          parsedPlayers.value = matchData.participants
+          selectedPlayers.value = matchData.participants.map((p: any) => p.name)
+        }
+      } else {
+        throw new Error('내전 데이터 로드 실패')
+      }
+    } catch (error) {
+      console.error('수정 모드 초기화 실패:', error)
+      alert('내전 데이터를 불러오는데 실패했습니다.')
+      isEditMode.value = false
+    }
+  }
+}
 
 // 클립보드에서 텍스트 가져오기
 const pasteFromClipboard = async () => {
@@ -584,8 +626,14 @@ const createMatch = async () => {
   )
   
   try {
-    const response = await fetch(`${API_BASE_URL}/matches`, {
-      method: 'POST',
+    const url = isEditMode.value ? 
+      `${API_BASE_URL}/matches/${editMatchId.value}` : 
+      `${API_BASE_URL}/matches`
+    
+    const method = isEditMode.value ? 'PUT' : 'POST'
+    
+    const response = await fetch(url, {
+      method,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -596,12 +644,16 @@ const createMatch = async () => {
     })
 
     if (response.ok) {
-      alert('내전이 성공적으로 생성되었습니다!')
-      // 폼 초기화
-      Object.assign(matchForm, { customId: '', host: '', type: 'soft' })
-      kakaoText.value = ''
-      parsedPlayers.value = []
-      selectedPlayers.value = []
+      alert(isEditMode.value ? '내전이 성공적으로 수정되었습니다!' : '내전이 성공적으로 생성되었습니다!')
+      
+      if (!isEditMode.value) {
+        // 생성 모드일 때만 폼 초기화
+        Object.assign(matchForm, { customId: '', host: '', type: 'soft' })
+        kakaoText.value = ''
+        parsedPlayers.value = []
+        selectedPlayers.value = []
+      }
+      
       // 홈페이지로 이동
       window.location.href = '/'
     } else {
@@ -614,6 +666,11 @@ const createMatch = async () => {
     loading.value = false
   }
 }
+
+// 컴포넌트 마운트 시 수정 모드 초기화
+onMounted(() => {
+  initializeEditMode()
+})
 </script>
 
 <style scoped>
