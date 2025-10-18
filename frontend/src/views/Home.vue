@@ -6,6 +6,33 @@
     </div>
     
     <div class="type-cards">
+      <!-- 실시간 관리 카드 -->
+      <div 
+        class="type-card realtime-card"
+        @click="goToRealtime"
+      >
+        <div class="card-image-container">
+          <div class="realtime-background">
+            <div class="realtime-animation">⚡</div>
+          </div>
+          <div class="image-overlay"></div>
+          <div class="card-header">
+            <div class="type-icon">🎮</div>
+            <div class="match-count-badge realtime-badge">
+              실시간
+            </div>
+          </div>
+        </div>
+        <div class="card-content">
+          <h3 class="type-name">실시간 내전 관리</h3>
+          <p class="type-desc">활성 내전 현황을 실시간으로 모니터링하고 관리하세요</p>
+          <div class="card-footer">
+            <div class="click-hint">클릭하여 실시간 관리</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 기존 내전 종류 카드들 -->
       <div 
         v-for="matchType in matchTypes" 
         :key="matchType.key"
@@ -81,6 +108,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 interface MatchType {
   key: string
@@ -200,6 +230,10 @@ const fetchMatchCounts = async () => {
 }
 
 // 내전 관리 함수들
+const goToRealtime = () => {
+  router.push('/realtime')
+}
+
 const viewMatch = (match: any) => {
   // 내전 상세 보기 페이지로 이동
   window.location.href = `/match/${match.id}`
@@ -567,6 +601,67 @@ window.addEventListener('focus', () => {
 
 .delete-btn:hover {
   background: #c82333;
+}
+
+/* 실시간 카드 스타일 */
+.realtime-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.realtime-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3);
+}
+
+.realtime-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.realtime-animation {
+  font-size: 4rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+.realtime-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  animation: glow 2s infinite alternate;
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 5px rgba(255, 255, 255, 0.3); }
+  to { box-shadow: 0 0 20px rgba(255, 255, 255, 0.6); }
+}
+
+.realtime-card .type-name {
+  color: white;
+  font-weight: bold;
+}
+
+.realtime-card .type-desc {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.realtime-card .click-hint {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: bold;
 }
 
 /* 반응형 디자인 */

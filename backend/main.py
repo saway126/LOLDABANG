@@ -12,6 +12,7 @@ import re
 from datetime import datetime
 import uvicorn
 import os
+from riot_api import riot_api
 
 app = FastAPI(title="LoL Custom Match Tool API", version="1.0.0")
 
@@ -566,6 +567,130 @@ async def delete_match(match_id: int):
         
         conn.commit()
         return {"message": "내전이 성공적으로 삭제되었습니다."}
+        
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+# ===== 라이엇 API 엔드포인트 =====
+
+@app.get("/api/riot/player/{game_name}/{tag_line}")
+async def get_player_info(game_name: str, tag_line: str):
+    """라이엇 ID로 플레이어 정보 조회"""
+    try:
+        player_info = await riot_api.get_player_full_info(game_name, tag_line)
+        if not player_info:
+            raise HTTPException(status_code=404, detail="플레이어를 찾을 수 없습니다.")
+        return player_info
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/riot/player/{game_name}/{tag_line}/league")
+async def get_player_league(game_name: str, tag_line: str):
+    """플레이어의 리그 정보 조회"""
+    try:
+        player_info = await riot_api.get_player_full_info(game_name, tag_line)
+        if not player_info:
+            raise HTTPException(status_code=404, detail="플레이어를 찾을 수 없습니다.")
+        return {"league": player_info.get("league")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/riot/player/{game_name}/{tag_line}/champions")
+async def get_player_champions(game_name: str, tag_line: str):
+    """플레이어의 챔피언 마스터리 조회"""
+    try:
+        player_info = await riot_api.get_player_full_info(game_name, tag_line)
+        if not player_info:
+            raise HTTPException(status_code=404, detail="플레이어를 찾을 수 없습니다.")
+        return {"champion_masteries": player_info.get("champion_masteries", [])}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/riot/champion/{champion_id}")
+async def get_champion_info(champion_id: int):
+    """챔피언 정보 조회"""
+    try:
+        champion_info = await riot_api.get_champion_data(champion_id)
+        if not champion_info:
+            raise HTTPException(status_code=404, detail="챔피언을 찾을 수 없습니다.")
+        return champion_info
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ===== 실시간 내전 상태 관리 =====
+
+@app.get("/api/matches/realtime")
+async def get_realtime_matches():
+    """실시간 내전 상태 조회"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    try:
+        # 활성 내전 조회 (최근 1시간 내)
+        cursor.execute("""
+            SELECT id, customId, host, type, status, createdAt, updatedAt
+            FROM matches 
+            WHERE status = 'open' 
+            AND datetime(createdAt) > datetime('now', '-1 hour', '+9 hours')
+            ORDER BY createdAt DESC
+        """)
+        
+        rows = cursor.fetchall()
+        matches = []
+        
+        for row in rows:
+            # 참가자 수 조회
+            cursor.execute("SELECT COUNT(*) FROM participants WHERE matchId = ?", (row[0],))
+            participant_count = cursor.fetchone()[0]
+            
+            matches.append({
+                "id": row[0],
+                "customId": row[1],
+                "host": row[2],
+                "type": row[3],
+                "status": row[4],
+                "createdAt": row[5],
+                "updatedAt": row[6],
+                "participantCount": participant_count,
+                "isRealtime": True
+            })
+        
+        return {
+            "matches": matches,
+            "totalCount": len(matches),
+            "lastUpdated": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.put("/api/matches/{match_id}/status")
+async def update_match_status(match_id: int, status_data: dict):
+    """내전 상태 업데이트 (실시간 관리용)"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    try:
+        new_status = status_data.get('status')
+        if new_status not in ['open', 'closed', 'in_progress', 'completed']:
+            raise HTTPException(status_code=400, detail="유효하지 않은 상태입니다.")
+        
+        cursor.execute("""
+            UPDATE matches 
+            SET status = ?, updatedAt = datetime('now', '+9 hours')
+            WHERE id = ?
+        """, (new_status, match_id))
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="내전을 찾을 수 없습니다.")
+        
+        conn.commit()
+        return {"message": f"내전 상태가 {new_status}로 업데이트되었습니다."}
         
     except Exception as e:
         conn.rollback()
