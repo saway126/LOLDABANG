@@ -124,7 +124,7 @@ const matchTypes: MatchType[] = [
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
   (import.meta.env.DEV 
     ? 'http://localhost:4000/api' 
-    : 'http://localhost:4000/api')
+    : 'https://loldabang-production.up.railway.app/api')
 
 const selectType = async (type: string) => {
   selectedType.value = type
