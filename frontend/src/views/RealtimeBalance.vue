@@ -150,9 +150,18 @@
             :class="{ loading: player.loading }"
           >
             <div class="player-info">
-              <div class="player-name">{{ player.gameName }}#{{ player.tagLine }}</div>
+              <div class="player-header">
+                <img 
+                  v-if="player.profileIconUrl" 
+                  :src="player.profileIconUrl" 
+                  :alt="`${player.gameName} 프로필`"
+                  class="player-profile-icon"
+                />
+                <div class="player-name">{{ player.gameName }}#{{ player.tagLine }}</div>
+              </div>
               <div class="player-details">
                 <div class="player-tier">{{ player.tier || '로딩 중...' }} {{ player.rank || '' }}</div>
+                <div class="player-level" v-if="player.summonerLevel > 0">레벨 {{ player.summonerLevel }}</div>
                 <div class="player-lp" v-if="player.lp > 0">{{ player.lp }}LP</div>
                 <div class="player-role" v-if="player.preferredRole !== 'FILL'">
                   {{ getRoleText(player.preferredRole) }}
@@ -425,6 +434,8 @@ const addPlayer = async () => {
     score: 0,
     championMasteries: [],
     league: null, // 리그 정보 추가
+    profileIconUrl: null, // 프로필 아이콘 URL 추가
+    summonerLevel: 0, // 소환사 레벨 추가
     assignedRole: '',
     isTeamLeader: false
   }
@@ -438,11 +449,22 @@ const addPlayer = async () => {
     if (response.ok) {
       const data = await response.json()
       const league = data.league?.[0]
+      const summoner = data.summoner
+      
       player.tier = league?.tier || 'UNRANKED'
       player.rank = league?.rank || 'IV'
       player.lp = league?.leaguePoints || 0
       player.championMasteries = data.champion_masteries || []
       player.league = league || null // 리그 정보 저장
+      
+      // Woolina님 블로그 방법으로 프로필 아이콘 URL 생성
+      if (summoner?.profileIconId) {
+        player.profileIconUrl = `https://raw.communitydragon.org/latest/game/assets/ux/summonericons/profileicon${summoner.profileIconId}.png`
+      }
+      
+      // 소환사 레벨 저장
+      player.summonerLevel = summoner?.summonerLevel || 0
+      
       player.score = calculatePlayerScore(data)
       player.loading = false
     } else {
@@ -451,6 +473,8 @@ const addPlayer = async () => {
       player.lp = 0
       player.score = 0
       player.league = null
+      player.profileIconUrl = null
+      player.summonerLevel = 0
       player.loading = false
     }
   } catch (error) {
@@ -460,6 +484,8 @@ const addPlayer = async () => {
     player.lp = 0
     player.score = 0
     player.league = null
+    player.profileIconUrl = null
+    player.summonerLevel = 0
     player.loading = false
   }
 }
@@ -1018,16 +1044,38 @@ onMounted(() => {
   margin-bottom: 10px;
 }
 
+.player-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.player-profile-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #667eea;
+  object-fit: cover;
+}
+
 .player-name {
   font-weight: bold;
   color: #333;
-  margin-bottom: 5px;
+  font-size: 1rem;
 }
 
 .player-tier {
   color: #667eea;
   font-size: 0.9rem;
   margin-bottom: 5px;
+}
+
+.player-level {
+  color: #28a745;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 3px;
 }
 
 .player-score {
