@@ -427,6 +427,39 @@ async def get_match_participants(match_id: int):
     
     return participants
 
+@app.get("/api/matches/{match_id}")
+async def get_match(match_id: int):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, customId, host, type, status, createdAt, updatedAt
+        FROM matches 
+        WHERE id = ?
+    """, (match_id,))
+    
+    match_row = cursor.fetchone()
+    if not match_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Match not found")
+    
+    # 참가자 수 조회
+    cursor.execute("SELECT COUNT(*) FROM participants WHERE matchId = ?", (match_id,))
+    participant_count = cursor.fetchone()[0]
+    
+    conn.close()
+    
+    return {
+        "id": match_row[0],
+        "customId": match_row[1],
+        "host": match_row[2],
+        "type": match_row[3],
+        "status": match_row[4],
+        "createdAt": match_row[5],
+        "updatedAt": match_row[6],
+        "participantCount": participant_count
+    }
+
 @app.put("/api/matches/{match_id}")
 async def update_match(match_id: int, match_data: dict):
     conn = sqlite3.connect(DB_PATH)

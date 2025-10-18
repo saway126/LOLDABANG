@@ -201,9 +201,8 @@ const fetchMatchCounts = async () => {
 
 // 내전 관리 함수들
 const viewMatch = (match: any) => {
-  // 내전 상세 보기 (모달 또는 새 페이지)
-  console.log('내전 보기:', match)
-  alert(`내전 ID: ${match.customId}\n호스트: ${match.host}\n참가자 수: ${match.participantCount}명`)
+  // 내전 상세 보기 페이지로 이동
+  window.location.href = `/match/${match.id}`
 }
 
 const editMatch = (match: any) => {
