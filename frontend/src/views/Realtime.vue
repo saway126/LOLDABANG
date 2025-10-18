@@ -158,17 +158,40 @@ const completedToday = computed(() => {
 const fetchRealtimeMatches = async () => {
   try {
     loading.value = true
-    const response = await fetch(`${API_BASE_URL}/matches/realtime`)
+    
+    // 실시간 엔드포인트가 없을 경우 기존 API 사용
+    let response = await fetch(`${API_BASE_URL}/matches/realtime`)
     
     if (response.ok) {
       const data = await response.json()
       realtimeMatches.value = data.matches
-      lastUpdated.value = new Date().toLocaleTimeString('ko-KR')
     } else {
-      console.error('실시간 내전 데이터 로드 실패:', response.status)
+      console.log('실시간 API 사용 불가, 기존 API로 대체')
+      // 기존 API로 대체
+      const allTypes = ['soft', 'hard', 'hyper']
+      let allMatches = []
+      
+      for (const type of allTypes) {
+        const typeResponse = await fetch(`${API_BASE_URL}/matches/by-type/${type}`)
+        if (typeResponse.ok) {
+          const typeMatches = await typeResponse.json()
+          allMatches = allMatches.concat(typeMatches)
+        }
+      }
+      
+      // 최근 1시간 내 활성 내전만 필터링
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+      realtimeMatches.value = allMatches.filter(match => {
+        const createdAt = new Date(match.createdAt)
+        return createdAt > oneHourAgo && match.status === 'open'
+      })
     }
+    
+    lastUpdated.value = new Date().toLocaleTimeString('ko-KR')
+    
   } catch (error) {
     console.error('실시간 내전 데이터 로드 실패:', error)
+    realtimeMatches.value = []
   } finally {
     loading.value = false
   }
