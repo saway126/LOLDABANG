@@ -1,13 +1,9 @@
-name: Deploy Frontend to Vercel
+name: Deploy to Vercel
 
 on:
   push:
     branches:
       - main
-    paths:
-      - 'frontend/**'
-      - 'public/**'
-      - '.github/workflows/deploy.yml'
 
 jobs:
   deploy:
@@ -16,26 +12,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: 'frontend/package-lock.json'
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Build frontend
-        working-directory: frontend
-        run: npm run build
-
-      - name: Copy build to public folder
-        run: |
-          rm -rf public/assets
-          cp -r frontend/dist/* public/
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
