@@ -427,6 +427,42 @@ async def get_match_participants(match_id: int):
     
     return participants
 
+@app.get("/api/matches")
+async def get_all_matches():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, customId, host, type, status, createdAt, updatedAt
+        FROM matches 
+        ORDER BY createdAt DESC
+    """)
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    matches = []
+    for row in rows:
+        # 참가자 수 조회
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM participants WHERE matchId = ?", (row[0],))
+        participant_count = cursor.fetchone()[0]
+        conn.close()
+        
+        matches.append({
+            "id": row[0],
+            "customId": row[1],
+            "host": row[2],
+            "type": row[3],
+            "status": row[4],
+            "createdAt": row[5],
+            "updatedAt": row[6],
+            "participantCount": participant_count
+        })
+    
+    return matches
+
 @app.get("/api/matches/{match_id}")
 async def get_match(match_id: int):
     conn = sqlite3.connect(DB_PATH)

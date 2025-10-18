@@ -83,7 +83,14 @@
     </div>
     
     <div v-else class="error">
-      내전을 찾을 수 없습니다.
+      <div class="error-content">
+        <h3>❌ 내전을 찾을 수 없습니다</h3>
+        <p>요청하신 내전이 존재하지 않거나 삭제되었습니다.</p>
+        <div class="error-actions">
+          <button @click="goBack" class="action-btn back-btn">← 뒤로가기</button>
+          <button @click="goHome" class="action-btn home-btn">🏠 홈으로</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -138,6 +145,11 @@ const loadMatchDetail = async () => {
 // 뒤로가기
 const goBack = () => {
   router.back()
+}
+
+// 홈으로 이동
+const goHome = () => {
+  router.push('/')
 }
 
 // 내전 수정
@@ -441,6 +453,59 @@ onMounted(() => {
 
 .delete-btn:hover {
   background: #c82333;
+}
+
+.error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.error-content {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  padding: 3rem;
+  box-shadow: 0 8px 32px rgba(139, 69, 19, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 196, 168, 0.3);
+}
+
+.error-content h3 {
+  color: #dc3545;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.error-content p {
+  color: #6c757d;
+  margin-bottom: 2rem;
+  font-size: 1.1rem;
+}
+
+.error-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.back-btn {
+  background: #6c757d;
+  color: white;
+}
+
+.back-btn:hover {
+  background: #5a6268;
+}
+
+.home-btn {
+  background: #007bff;
+  color: white;
+}
+
+.home-btn:hover {
+  background: #0056b3;
 }
 
 /* 반응형 디자인 */
