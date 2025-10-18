@@ -120,18 +120,29 @@ const loadMatchDetail = async () => {
   loading.value = true
   
   try {
-    // 내전 기본 정보 로드
-    const matchResponse = await fetch(`${API_BASE_URL}/matches/${matchId}`)
-    if (matchResponse.ok) {
-      match.value = await matchResponse.json()
-    } else {
-      throw new Error('내전 정보를 불러올 수 없습니다.')
+    // 먼저 기존 API로 내전 목록을 조회하여 해당 내전 찾기
+    const allTypes = ['soft', 'hard', 'hyper']
+    let foundMatch = null
+    
+    for (const type of allTypes) {
+      const response = await fetch(`${API_BASE_URL}/matches/by-type/${type}`)
+      if (response.ok) {
+        const matches = await response.json()
+        foundMatch = matches.find((m: any) => m.id === parseInt(matchId as string))
+        if (foundMatch) break
+      }
     }
     
-    // 참가자 정보 로드
-    const participantsResponse = await fetch(`${API_BASE_URL}/matches/${matchId}/participants`)
-    if (participantsResponse.ok) {
-      participants.value = await participantsResponse.json()
+    if (foundMatch) {
+      match.value = foundMatch
+      
+      // 참가자 정보 로드
+      const participantsResponse = await fetch(`${API_BASE_URL}/matches/${matchId}/participants`)
+      if (participantsResponse.ok) {
+        participants.value = await participantsResponse.json()
+      }
+    } else {
+      throw new Error('내전 정보를 불러올 수 없습니다.')
     }
     
   } catch (error) {
