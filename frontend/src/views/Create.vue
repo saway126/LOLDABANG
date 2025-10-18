@@ -319,8 +319,8 @@ const parseKakaoTalk = (text: string): { players: Player[]; errors: string[] } =
       const name = nameMatch[1]
       const remaining = normalized.substring(name.length).trim()
       
-      // 티어 정보 추출 - 더 유연한 패턴
-      const tierPattern = /^([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^([A-Za-z]+)(\d*)|^\/\s*([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)/
+      // 티어 정보 추출 - OCR 오류 대응 패턴
+      const tierPattern = /^([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^([A-Za-z]+)(\d*)|^\/\s*([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^(\d+)\s*\/\s*(\d+)|^(\d+)|^([A-Za-z]+)/
       const tierMatch = remaining.match(tierPattern)
       
       // 티어 정보 추출
@@ -346,6 +346,18 @@ const parseKakaoTalk = (text: string): { players: Player[]; errors: string[] } =
           // m240/d2 형식 (소문자)
           tier = tierMatch[9].toUpperCase()
           rank = tierMatch[10]
+        } else if (tierMatch[11] && tierMatch[12]) {
+          // 숫자/숫자 형식 (63/03)
+          tier = 'UNRANKED'
+          rank = tierMatch[11]
+        } else if (tierMatch[13]) {
+          // 단일 숫자 형식
+          tier = 'UNRANKED'
+          rank = tierMatch[13]
+        } else if (tierMatch[14]) {
+          // 단일 문자 형식
+          tier = tierMatch[14].toUpperCase()
+          rank = ''
         } else {
           tier = 'UNRANKED'
           rank = ''
@@ -397,9 +409,9 @@ const parseKakaoTalk = (text: string): { players: Player[]; errors: string[] } =
       
       console.log('Parsed lane - mainLane:', mainLane, 'preferredLanes:', JSON.stringify(preferredLanes)) // 디버깅용
       
-      // 라인명 정규화 - 한글 자모 우선 매핑
+      // 라인명 정규화 - 한글 자모 우선 매핑 (OCR 오류 대응)
       const laneMapping: Record<string, string> = {
-        // 한글 자모 (우선순위 높음)
+        // 한글 자모 (우선순위 높음) - OCR 오류 패턴 포함
         'ㅇㄷ': 'ADC',      // 원딜
         'ㅅㅍ': 'SUPPORT',  // 서폿  
         'ㅁㄷ': 'MID',      // 미드
@@ -413,6 +425,12 @@ const parseKakaoTalk = (text: string): { players: Player[]; errors: string[] } =
         '미드': 'MID',
         '원딜': 'ADC',
         '서폿': 'SUPPORT',
+        
+        // OCR 오류 패턴 (공백 포함)
+        '정 글': 'JUNGLE',
+        '미 드': 'MID',
+        '원 딜': 'ADC',
+        '서 폿': 'SUPPORT',
         
         // 복합 라인명
         '정글서폿': 'JUNGLE SUPPORT',
