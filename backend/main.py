@@ -13,15 +13,29 @@ import os
 app = FastAPI(title="LoL Custom Match Tool API", version="1.0.0")
 
 # 데이터베이스 파일 경로 설정
-# Railway 영구 볼륨 사용 (프로덕션) 또는 로컬 파일 (개발)
-if os.environ.get('RAILWAY_ENVIRONMENT'):
+# Railway 환경 감지 (여러 방법으로 확인)
+is_railway = (
+    os.environ.get('RAILWAY_ENVIRONMENT') or 
+    os.environ.get('RAILWAY_PROJECT_ID') or
+    os.environ.get('PORT')  # Railway는 항상 PORT 환경변수를 설정
+)
+
+if is_railway:
     # Railway 환경: 영구 볼륨 사용
     DB_PATH = "/data/loldabang.db"
     # /data 디렉토리가 없으면 생성
-    os.makedirs("/data", exist_ok=True)
+    try:
+        os.makedirs("/data", exist_ok=True)
+        print(f"Railway 환경 감지됨. DB 경로: {DB_PATH}")
+    except Exception as e:
+        print(f"Railway /data 디렉토리 생성 실패: {e}")
+        # 대안으로 현재 디렉토리 사용
+        DB_PATH = os.path.join(os.path.dirname(__file__), "loldabang.db")
+        print(f"대안 DB 경로 사용: {DB_PATH}")
 else:
     # 로컬 개발 환경
     DB_PATH = os.path.join(os.path.dirname(__file__), "loldabang.db")
+    print(f"로컬 환경. DB 경로: {DB_PATH}")
 
 # CORS 설정
 app.add_middleware(
@@ -35,51 +49,70 @@ app.add_middleware(
 
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    # 테이블 생성 (IF NOT EXISTS 사용)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS players (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            tier TEXT,
-            rank TEXT,
-            mainLane TEXT,
-            preferredLanes TEXT,
-            mmr INTEGER,
-            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS matches (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customId TEXT NOT NULL UNIQUE,
-            host TEXT NOT NULL,
-            type TEXT NOT NULL CHECK(type IN ('soft', 'hard', 'hyper')),
-            status TEXT DEFAULT 'open',
-            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS participants (
-            matchId INTEGER NOT NULL,
-            playerId INTEGER NOT NULL,
-            status TEXT DEFAULT 'waiting',
-            FOREIGN KEY (matchId) REFERENCES matches(id),
-            FOREIGN KEY (playerId) REFERENCES players(id),
-            PRIMARY KEY (matchId, playerId)
-        )
-    """)
-    
-    conn.commit()
-    conn.close()
-    print("Database initialized.")
+    try:
+        print(f"데이터베이스 초기화 시작 - 경로: {DB_PATH}")
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # 테이블 생성 (IF NOT EXISTS 사용)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS players (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                tier TEXT,
+                rank TEXT,
+                mainLane TEXT,
+                preferredLanes TEXT,
+                mmr INTEGER,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS matches (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customId TEXT NOT NULL UNIQUE,
+                host TEXT NOT NULL,
+                type TEXT NOT NULL CHECK(type IN ('soft', 'hard', 'hyper')),
+                status TEXT DEFAULT 'open',
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS participants (
+                matchId INTEGER NOT NULL,
+                playerId INTEGER NOT NULL,
+                status TEXT DEFAULT 'waiting',
+                FOREIGN KEY (matchId) REFERENCES matches(id),
+                FOREIGN KEY (playerId) REFERENCES players(id),
+                PRIMARY KEY (matchId, playerId)
+            )
+        """)
+        
+        conn.commit()
+        conn.close()
+        print("데이터베이스 초기화 완료")
+    except Exception as e:
+        print(f"데이터베이스 초기화 실패: {e}")
+        # Railway에서 데이터베이스 초기화 실패 시에도 앱이 시작되도록 함
 
 # 데이터베이스 즉시 초기화
 init_db()
+
+# 헬스체크 엔드포인트
+@app.get("/")
+async def root():
+    return {"message": "LoL Custom Match Tool API", "status": "running"}
+
+@app.get("/api/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "environment": "Railway" if is_railway else "Local",
+        "database_path": DB_PATH,
+        "port": os.environ.get("PORT", "4000")
+    }
 
 # Pydantic 모델들
 class Player(BaseModel):
@@ -397,4 +430,7 @@ handler = app
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=4000)
+    # Railway 환경에서는 PORT 환경변수 사용, 없으면 4000 사용
+    port = int(os.environ.get("PORT", 4000))
+    print(f"서버 시작 - 포트: {port}, 환경: {'Railway' if is_railway else '로컬'}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
