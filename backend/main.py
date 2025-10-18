@@ -427,7 +427,7 @@ async def get_match_participants(match_id: int):
     
     return participants
 
-@app.get("/api/matches")
+@app.get("/api/matches/all")
 async def get_all_matches():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
