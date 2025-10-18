@@ -185,7 +185,7 @@ const triggerImageUpload = () => {
   imageInput.value?.click()
 }
 
-// Tesseract.js CDN 로드 함수
+// Tesseract.js CDN 로드 함수 (여러 CDN 시도)
 const loadTesseract = async () => {
   return new Promise((resolve, reject) => {
     if (window.Tesseract) {
@@ -193,17 +193,50 @@ const loadTesseract = async () => {
       return
     }
     
-    const script = document.createElement('script')
-    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.0.2/dist/browser/index.min.js'
-    script.onload = () => {
-      if (window.Tesseract) {
-        resolve(window.Tesseract)
-      } else {
-        reject(new Error('Tesseract.js 로드 실패'))
+    // 여러 CDN을 시도
+    const cdnUrls = [
+      'https://unpkg.com/tesseract.js@5.0.2/dist/browser/index.min.js',
+      'https://cdn.jsdelivr.net/npm/tesseract.js@5.0.2/dist/browser/index.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.2/dist/browser/index.min.js'
+    ]
+    
+    let currentIndex = 0
+    
+    const tryLoadScript = () => {
+      if (currentIndex >= cdnUrls.length) {
+        reject(new Error('모든 Tesseract.js CDN 로드 실패'))
+        return
       }
+      
+      const script = document.createElement('script')
+      script.src = cdnUrls[currentIndex]
+      script.crossOrigin = 'anonymous'
+      script.type = 'module'
+      
+      script.onload = () => {
+        // 약간의 지연 후 Tesseract 확인
+        setTimeout(() => {
+          if (window.Tesseract) {
+            console.log(`Tesseract.js 로드 성공: ${cdnUrls[currentIndex]}`)
+            resolve(window.Tesseract)
+          } else {
+            console.warn(`Tesseract.js 로드 후에도 window.Tesseract가 없음: ${cdnUrls[currentIndex]}`)
+            currentIndex++
+            tryLoadScript()
+          }
+        }, 100)
+      }
+      
+      script.onerror = () => {
+        console.warn(`Tesseract.js CDN 실패: ${cdnUrls[currentIndex]}`)
+        currentIndex++
+        tryLoadScript()
+      }
+      
+      document.head.appendChild(script)
     }
-    script.onerror = () => reject(new Error('Tesseract.js 스크립트 로드 실패'))
-    document.head.appendChild(script)
+    
+    tryLoadScript()
   })
 }
 
@@ -226,32 +259,58 @@ const handleImageUpload = async (event: Event) => {
     // Tesseract.js CDN 로드
     const Tesseract = await loadTesseract() as any
     
+    if (!Tesseract || !Tesseract.recognize) {
+      throw new Error('Tesseract.js가 올바르게 로드되지 않았습니다.')
+    }
+    
     // 이미지를 Canvas로 변환
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
     const img = new Image()
     
+    img.crossOrigin = 'anonymous'
+    
     img.onload = async () => {
-      canvas.width = img.width
-      canvas.height = img.height
-      ctx?.drawImage(img, 0, 0)
-      
-      // OCR 실행
-      const { data: { text } } = await Tesseract.recognize(
-        canvas.toDataURL('image/png'),
-        'kor+eng', // 한국어 + 영어
-        {
-          logger: (m: any) => console.log(m)
+      try {
+        canvas.width = img.width
+        canvas.height = img.height
+        ctx?.drawImage(img, 0, 0)
+        
+        console.log('OCR 처리 시작...')
+        
+        // OCR 실행 (더 안정적인 설정)
+        const result = await Tesseract.recognize(
+          canvas.toDataURL('image/png'),
+          'kor+eng', // 한국어 + 영어
+          {
+            logger: (m: any) => {
+              if (m.status === 'recognizing text') {
+                console.log(`OCR 진행률: ${Math.round(m.progress * 100)}%`)
+              }
+            },
+            workerPath: 'https://unpkg.com/tesseract.js@5.0.2/dist/worker.min.js',
+            corePath: 'https://unpkg.com/tesseract.js@5.0.2/dist/tesseract-core.wasm.js'
+          }
+        )
+        
+        console.log('OCR 처리 완료:', result)
+        
+        // 추출된 텍스트를 textarea에 설정
+        if (result && result.data && result.data.text) {
+          kakaoText.value = result.data.text
+          
+          // 자동으로 파싱 실행
+          parseText()
+        } else {
+          throw new Error('텍스트 추출에 실패했습니다.')
         }
-      )
-      
-      // 추출된 텍스트를 textarea에 설정
-      kakaoText.value = text
-      
-      // 자동으로 파싱 실행
-      parseText()
-      
-      ocrLoading.value = false
+        
+      } catch (ocrError: any) {
+        console.error('OCR 처리 중 오류:', ocrError)
+        alert(`OCR 처리 실패: ${ocrError.message}`)
+      } finally {
+        ocrLoading.value = false
+      }
     }
     
     img.src = URL.createObjectURL(file)
