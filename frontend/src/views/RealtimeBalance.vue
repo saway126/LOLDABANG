@@ -357,18 +357,51 @@ const newPlayer = ref({
   preferredRole: ''
 })
 
-// WebSocket 연결
-const { isConnected, send } = useWebSocket(WS_URL, {
-  onMessage: handleWebSocketMessage,
-  onOpen: () => {
-    wsConnected.value = true
-    console.log('밸런스 WebSocket 연결됨')
-  },
-  onClose: () => {
-    wsConnected.value = false
-    console.log('밸런스 WebSocket 연결 끊김')
+// WebSocket 연결 (Railway WebSocket 지원 문제로 비활성화)
+const ws = ref(null)
+const isConnected = ref(false)
+
+// WebSocket 연결 시도 (선택적)
+const connectWebSocket = () => {
+  try {
+    ws.value = new WebSocket(WS_URL)
+    
+    ws.value.onopen = () => {
+      wsConnected.value = true
+      isConnected.value = true
+      console.log('✅ 밸런스 WebSocket 연결됨')
+    }
+    
+    ws.value.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        handleWebSocketMessage(data)
+      } catch (error) {
+        console.error('❌ WebSocket 메시지 파싱 오류:', error)
+      }
+    }
+    
+    ws.value.onclose = () => {
+      wsConnected.value = false
+      isConnected.value = false
+      console.log('🔴 밸런스 WebSocket 연결 끊김')
+    }
+    
+    ws.value.onerror = (error) => {
+      wsConnected.value = false
+      isConnected.value = false
+      console.warn('⚠️ WebSocket 연결 실패 (Railway WebSocket 미지원 가능)')
+    }
+  } catch (error) {
+    console.warn('⚠️ WebSocket 초기화 실패:', error)
   }
-})
+}
+
+const send = (message) => {
+  if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+    ws.value.send(JSON.stringify(message))
+  }
+}
 
 // 계산된 속성
 const tierDistribution = computed(() => {
@@ -747,6 +780,8 @@ const getRoleText = (role) => {
 // 라이프사이클
 onMounted(() => {
   fetchActiveMatches()
+  // WebSocket 연결 시도 (Railway 지원 문제로 선택적)
+  // connectWebSocket()
 })
 </script>
 

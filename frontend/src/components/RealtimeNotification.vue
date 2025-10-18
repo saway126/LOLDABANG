@@ -114,19 +114,48 @@ const settings = ref({
   soundEnabled: true
 })
 
-// WebSocket 연결
-const { isConnected, send } = useWebSocket(
-  import.meta.env.VITE_WS_URL || 'wss://loldabang-production.up.railway.app/ws',
-  {
-    onMessage: handleWebSocketMessage,
-    onOpen: () => {
-      console.log('알림 WebSocket 연결됨')
-    },
-    onClose: () => {
-      console.log('알림 WebSocket 연결 끊김')
+// WebSocket 연결 (Railway WebSocket 지원 문제로 비활성화)
+const ws = ref(null)
+const isConnected = ref(false)
+
+// WebSocket 연결 시도 (선택적)
+const connectWebSocket = () => {
+  try {
+    ws.value = new WebSocket(import.meta.env.VITE_WS_URL || 'wss://loldabang-production.up.railway.app/ws')
+    
+    ws.value.onopen = () => {
+      isConnected.value = true
+      console.log('✅ 알림 WebSocket 연결됨')
     }
+    
+    ws.value.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        handleWebSocketMessage(data)
+      } catch (error) {
+        console.error('❌ WebSocket 메시지 파싱 오류:', error)
+      }
+    }
+    
+    ws.value.onclose = () => {
+      isConnected.value = false
+      console.log('🔴 알림 WebSocket 연결 끊김')
+    }
+    
+    ws.value.onerror = (error) => {
+      isConnected.value = false
+      console.warn('⚠️ WebSocket 연결 실패 (Railway WebSocket 미지원 가능)')
+    }
+  } catch (error) {
+    console.warn('⚠️ WebSocket 초기화 실패:', error)
   }
-)
+}
+
+const send = (message) => {
+  if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+    ws.value.send(JSON.stringify(message))
+  }
+}
 
 // 계산된 속성
 const unreadCount = computed(() => {
@@ -296,6 +325,8 @@ const loadSettings = () => {
 // 라이프사이클
 onMounted(() => {
   loadSettings()
+  // WebSocket 연결 시도 (Railway 지원 문제로 선택적)
+  // connectWebSocket()
 })
 
 // 키보드 단축키
