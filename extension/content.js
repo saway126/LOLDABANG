@@ -15,11 +15,20 @@ class LoldabangExtension {
 
   createPort() {
     try {
+      if (this.port) {
+        try {
+          this.port.disconnect();
+        } catch (e) {
+          // Port already disconnected
+        }
+      }
+      
       this.port = chrome.runtime.connect({ name: 'loldabang-extension' });
       
       this.port.onDisconnect.addListener(() => {
         console.log('Port disconnected, attempting to reconnect...');
-        setTimeout(() => this.createPort(), 1000);
+        this.port = null;
+        setTimeout(() => this.createPort(), 2000);
       });
       
       this.port.onMessage.addListener((message) => {
@@ -27,7 +36,8 @@ class LoldabangExtension {
       });
     } catch (error) {
       console.error('Failed to create port:', error);
-      setTimeout(() => this.createPort(), 1000);
+      this.port = null;
+      setTimeout(() => this.createPort(), 2000);
     }
   }
 
