@@ -3,24 +3,58 @@ console.log('롤다방 Extension Content Script 시작');
 
 class LoldabangExtension {
   constructor() {
+    this.isPageVisible = true;
     this.init();
   }
 
   init() {
+    this.setupVisibilityHandlers();
     this.setupMessageListener();
     this.injectAPIHelpers();
     this.testAPI();
   }
 
+  // BFCache 문제 해결을 위한 페이지 가시성 처리
+  setupVisibilityHandlers() {
+    // 페이지가 보이게 될 때 (BFCache에서 복원)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        this.isPageVisible = true;
+        console.log('페이지가 BFCache에서 복원됨, Extension 재초기화');
+        this.testAPI(); // API 연결 재테스트
+      } else {
+        this.isPageVisible = false;
+        console.log('페이지가 BFCache로 이동됨');
+      }
+    });
+
+    // 페이지 로드 완료 시
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        this.isPageVisible = true;
+        this.testAPI();
+      });
+    } else {
+      this.isPageVisible = true;
+      this.testAPI();
+    }
+  }
 
   setupMessageListener() {
+    // BFCache 안전한 메시지 리스너
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      // 페이지가 보이지 않으면 요청 무시
+      if (!this.isPageVisible) {
+        console.log('페이지가 BFCache에 있어 요청 무시:', request.action);
+        return false;
+      }
+
       if (request.action === 'fetchMatches') {
         this.fetchMatches(request.matchType)
           .then(data => sendResponse({ success: true, data }))
           .catch(error => sendResponse({ success: false, error: error.message }));
         
-        return true;
+        return true; // 비동기 응답을 위해 true 반환
       }
     });
   }

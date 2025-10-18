@@ -5,7 +5,8 @@
   "description": "롤다방 내전프로그램 Chrome Extension",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
     "http://localhost:4000/*",
