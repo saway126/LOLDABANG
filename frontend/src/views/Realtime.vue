@@ -159,34 +159,41 @@ const fetchRealtimeMatches = async () => {
   try {
     loading.value = true
     
-    // Railway 서버 문제로 인해 기존 API만 사용
-    console.log('기존 API를 사용하여 내전 데이터 로드')
+    // Railway 서버 문제로 인해 기존 API만 사용 (실시간 엔드포인트 비활성화)
+    console.log('✅ 기존 API를 사용하여 내전 데이터 로드 중...')
     const allTypes = ['soft', 'hard', 'hyper']
     let allMatches = []
     
     for (const type of allTypes) {
       try {
+        console.log(`📡 ${type} 타입 내전 데이터 로드 중...`)
         const typeResponse = await fetch(`${API_BASE_URL}/matches/by-type/${type}`)
         if (typeResponse.ok) {
           const typeMatches = await typeResponse.json()
           allMatches = allMatches.concat(typeMatches)
+          console.log(`✅ ${type} 타입: ${typeMatches.length}개 내전 로드 완료`)
+        } else {
+          console.warn(`⚠️ ${type} 타입 내전 로드 실패: ${typeResponse.status}`)
         }
       } catch (typeError) {
-        console.warn(`${type} 타입 내전 로드 실패:`, typeError)
+        console.warn(`❌ ${type} 타입 내전 로드 실패:`, typeError)
       }
     }
     
     // 최근 1시간 내 활성 내전만 필터링
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-    realtimeMatches.value = allMatches.filter(match => {
+    const filteredMatches = allMatches.filter(match => {
       const createdAt = new Date(match.createdAt)
       return createdAt > oneHourAgo && match.status === 'open'
     })
     
+    realtimeMatches.value = filteredMatches
+    console.log(`🎯 총 ${allMatches.length}개 내전 중 ${filteredMatches.length}개 활성 내전 표시`)
+    
     lastUpdated.value = new Date().toLocaleTimeString('ko-KR')
     
   } catch (error) {
-    console.error('내전 데이터 로드 실패:', error)
+    console.error('❌ 내전 데이터 로드 실패:', error)
     realtimeMatches.value = []
   } finally {
     loading.value = false
