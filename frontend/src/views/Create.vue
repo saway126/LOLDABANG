@@ -306,21 +306,30 @@ const parseKakaoTalk = (text: string): { players: Player[]; errors: string[] } =
 
   lines.forEach((line) => {
     try {
-      // 정규화: 여러 공백을 하나로
-      const normalized = line.trim().replace(/\s+/g, ' ')
+      // 시간 정보 제거 (1시간 전, 55분 전 등)
+      const timeRemoved = line.replace(/\d+\s*(시간|분|시간)\s*전/g, '').trim()
       
-      // 닉네임#태그 패턴 찾기
-      // 닉네임#태그 형식 매칭 - 공백 허용
-      const nameMatch = normalized.match(/^([^#]+#[^\s]+)/)
+      // 정규화: 여러 공백을 하나로
+      const normalized = timeRemoved.replace(/\s+/g, ' ')
+      
+      // 빈 라인 스킵
+      if (!normalized) return
+      
+      // 닉네임#태그 패턴 찾기 (더 유연하게)
+      // 닉네임#태그 형식 매칭 - 공백 허용, OCR 오류 대응
+      const nameMatch = normalized.match(/^([^#\s]+(?:#[^\s]+)?)/)
       if (!nameMatch) {
+        // 시간 정보만 있는 라인은 스킵
+        if (line.includes('시간') || line.includes('분')) return
+        
         throw new Error(`Invalid name format: ${line}`)
       }
       
       const name = nameMatch[1]
       const remaining = normalized.substring(name.length).trim()
       
-      // 티어 정보 추출 - OCR 오류 대응 패턴
-      const tierPattern = /^([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^([A-Za-z]+)(\d*)|^\/\s*([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^(\d+)\s*\/\s*(\d+)|^(\d+)|^([A-Za-z]+)/
+      // 티어 정보 추출 - OCR 오류 대응 패턴 (더 유연하게)
+      const tierPattern = /^([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^([A-Za-z]+)(\d*)|^\/\s*([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^(\d+)\s*\/\s*(\d+)|^(\d+)|^([A-Za-z]+)|^([가-힣]+)(\d*)|^(\d+)\s*\/\s*(\d+)\s*\([^)]*\)/
       const tierMatch = remaining.match(tierPattern)
       
       // 티어 정보 추출
@@ -358,6 +367,14 @@ const parseKakaoTalk = (text: string): { players: Player[]; errors: string[] } =
           // 단일 문자 형식
           tier = tierMatch[14].toUpperCase()
           rank = ''
+        } else if (tierMatch[15] && tierMatch[16]) {
+          // 한글 티어 형식 (경쟁사 088)
+          tier = 'UNRANKED'
+          rank = tierMatch[16]
+        } else if (tierMatch[17] && tierMatch[18]) {
+          // 괄호 포함 숫자/숫자 형식 (63/03(임시))
+          tier = 'UNRANKED'
+          rank = tierMatch[17]
         } else {
           tier = 'UNRANKED'
           rank = ''
@@ -431,6 +448,13 @@ const parseKakaoTalk = (text: string): { players: Player[]; errors: string[] } =
         '미 드': 'MID',
         '원 딜': 'ADC',
         '서 폿': 'SUPPORT',
+        '서 풋': 'SUPPORT',
+        
+        // OCR 오류 패턴 (자모 분리)
+        'ㄷ ㄱ': 'JUNGLE',
+        'ㅁ ㄷ': 'MID',
+        'ㅇ ㄷ': 'ADC',
+        'ㅅ ㅍ': 'SUPPORT',
         
         // 복합 라인명
         '정글서폿': 'JUNGLE SUPPORT',
