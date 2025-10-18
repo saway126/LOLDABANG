@@ -3,7 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import List, Optional
-import pysqlite3 as sqlite3
+try:
+    import pysqlite3 as sqlite3
+except ImportError:
+    import sqlite3
 import json
 import re
 from datetime import datetime
@@ -430,7 +433,23 @@ handler = app
 
 
 if __name__ == "__main__":
-    # Railway 환경에서는 PORT 환경변수 사용, 없으면 4000 사용
-    port = int(os.environ.get("PORT", 4000))
-    print(f"서버 시작 - 포트: {port}, 환경: {'Railway' if is_railway else '로컬'}")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    try:
+        # Railway 환경에서는 PORT 환경변수 사용, 없으면 4000 사용
+        port = int(os.environ.get("PORT", 4000))
+        print(f"서버 시작 - 포트: {port}, 환경: {'Railway' if is_railway else '로컬'}")
+        print(f"데이터베이스 경로: {DB_PATH}")
+        
+        # Railway에서 앱 시작 전 최종 확인
+        if is_railway:
+            print("Railway 환경에서 서버 시작 중...")
+            # 데이터베이스 파일 존재 확인
+            if not os.path.exists(DB_PATH):
+                print(f"데이터베이스 파일이 없습니다. 새로 생성합니다: {DB_PATH}")
+                init_db()
+        
+        uvicorn.run(app, host="0.0.0.0", port=port)
+    except Exception as e:
+        print(f"서버 시작 실패: {e}")
+        # Railway에서 크래시 방지를 위해 기본 설정으로 재시도
+        print("기본 설정으로 재시도...")
+        uvicorn.run(app, host="0.0.0.0", port=8000)
