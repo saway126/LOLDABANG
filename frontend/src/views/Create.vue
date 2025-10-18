@@ -182,21 +182,33 @@ const initializeEditMode = async () => {
     editMatchId.value = editId
     
     try {
-      // 기존 내전 데이터 로드
-      const response = await fetch(`${API_BASE_URL}/matches/${editId}`)
-      if (response.ok) {
-        const matchData = await response.json()
-        originalMatchData.value = matchData
+      // 먼저 기존 API로 내전 목록을 조회하여 해당 내전 찾기
+      const allTypes = ['soft', 'hard', 'hyper']
+      let foundMatch = null
+      
+      for (const type of allTypes) {
+        const response = await fetch(`${API_BASE_URL}/matches/by-type/${type}`)
+        if (response.ok) {
+          const matches = await response.json()
+          foundMatch = matches.find((m: any) => m.id === parseInt(editId))
+          if (foundMatch) break
+        }
+      }
+      
+      if (foundMatch) {
+        originalMatchData.value = foundMatch
         
         // 폼에 기존 데이터 설정
-        matchForm.customId = matchData.customId
-        matchForm.host = matchData.host
-        matchForm.type = matchData.type
+        matchForm.customId = foundMatch.customId
+        matchForm.host = foundMatch.host
+        matchForm.type = foundMatch.type
         
-        // 기존 참가자 데이터 설정
-        if (matchData.participants) {
-          parsedPlayers.value = matchData.participants
-          selectedPlayers.value = matchData.participants.map((p: any) => p.name)
+        // 참가자 정보 로드
+        const participantsResponse = await fetch(`${API_BASE_URL}/matches/${editId}/participants`)
+        if (participantsResponse.ok) {
+          const participants = await participantsResponse.json()
+          parsedPlayers.value = participants
+          selectedPlayers.value = participants.map((p: any) => p.name)
         }
       } else {
         throw new Error('내전 데이터 로드 실패')

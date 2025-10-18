@@ -78,7 +78,7 @@ def init_db():
                 host TEXT NOT NULL,
                 type TEXT NOT NULL CHECK(type IN ('soft', 'hard', 'hyper')),
                 status TEXT DEFAULT 'open',
-                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+                createdAt DATETIME DEFAULT (datetime('now', '+9 hours'))
             )
         """)
         
@@ -286,9 +286,9 @@ async def create_match(match_data: MatchCreate):
     cursor = conn.cursor()
     
     try:
-        # 매치 생성
+        # 매치 생성 (한국 시간 사용)
         cursor.execute(
-            "INSERT INTO matches (customId, host, type) VALUES (?, ?, ?)",
+            "INSERT INTO matches (customId, host, type, createdAt) VALUES (?, ?, ?, datetime('now', '+9 hours'))",
             (match_data.customId, match_data.host, match_data.type)
         )
         match_id = cursor.lastrowid
