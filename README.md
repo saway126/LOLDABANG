@@ -229,6 +229,27 @@ npm run build
    http://localhost:5173
    ```
 
+## 🌐 배포
+
+자세한 배포 가이드는 [DEPLOYMENT.md](./DEPLOYMENT.md)를 참고하세요.
+
+### 빠른 배포 가이드
+
+**백엔드 (Railway)**
+1. Railway 계정 생성 및 GitHub 연동
+2. Railway 대시보드에서 `backend` 디렉토리 배포
+3. `/data` 경로에 영구 볼륨 마운트
+4. 도메인 생성 및 URL 복사
+
+**프론트엔드 (Vercel)**
+1. Vercel 대시보드에서 환경 변수 설정:
+   - `VITE_API_BASE_URL`: Railway 백엔드 URL + `/api`
+2. 프론트엔드 빌드 및 배포:
+   ```bash
+   cd frontend && npm run build
+   vercel --prod
+   ```
+
 ## 📄 라이선스
 
 ISC

@@ -12,8 +12,16 @@ import os
 
 app = FastAPI(title="LoL Custom Match Tool API", version="1.0.0")
 
-# 데이터베이스 파일 경로 설정 (Vercel 환경에 맞게)
-DB_PATH = "/tmp/loldabang.db"
+# 데이터베이스 파일 경로 설정
+# Railway 영구 볼륨 사용 (프로덕션) 또는 로컬 파일 (개발)
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    # Railway 환경: 영구 볼륨 사용
+    DB_PATH = "/data/loldabang.db"
+    # /data 디렉토리가 없으면 생성
+    os.makedirs("/data", exist_ok=True)
+else:
+    # 로컬 개발 환경
+    DB_PATH = os.path.join(os.path.dirname(__file__), "loldabang.db")
 
 # CORS 설정
 app.add_middleware(
