@@ -185,7 +185,7 @@ const triggerImageUpload = () => {
   imageInput.value?.click()
 }
 
-// Tesseract.js CDN 로드 함수 (여러 CDN 시도)
+// Tesseract.js CDN 로드 함수 (간단한 방법)
 const loadTesseract = async () => {
   return new Promise((resolve, reject) => {
     if (window.Tesseract) {
@@ -193,50 +193,28 @@ const loadTesseract = async () => {
       return
     }
     
-    // 여러 CDN을 시도
-    const cdnUrls = [
-      'https://unpkg.com/tesseract.js@5.0.2/dist/browser/index.min.js',
-      'https://cdn.jsdelivr.net/npm/tesseract.js@5.0.2/dist/browser/index.min.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.2/dist/browser/index.min.js'
-    ]
+    // 가장 안정적인 CDN 사용
+    const script = document.createElement('script')
+    script.src = 'https://unpkg.com/tesseract.js@4.1.1/dist/tesseract.min.js'
+    script.crossOrigin = 'anonymous'
     
-    let currentIndex = 0
-    
-    const tryLoadScript = () => {
-      if (currentIndex >= cdnUrls.length) {
-        reject(new Error('모든 Tesseract.js CDN 로드 실패'))
-        return
-      }
-      
-      const script = document.createElement('script')
-      script.src = cdnUrls[currentIndex]
-      script.crossOrigin = 'anonymous'
-      script.type = 'module'
-      
-      script.onload = () => {
-        // 약간의 지연 후 Tesseract 확인
-        setTimeout(() => {
-          if (window.Tesseract) {
-            console.log(`Tesseract.js 로드 성공: ${cdnUrls[currentIndex]}`)
-            resolve(window.Tesseract)
-          } else {
-            console.warn(`Tesseract.js 로드 후에도 window.Tesseract가 없음: ${cdnUrls[currentIndex]}`)
-            currentIndex++
-            tryLoadScript()
-          }
-        }, 100)
-      }
-      
-      script.onerror = () => {
-        console.warn(`Tesseract.js CDN 실패: ${cdnUrls[currentIndex]}`)
-        currentIndex++
-        tryLoadScript()
-      }
-      
-      document.head.appendChild(script)
+    script.onload = () => {
+      // 약간의 지연 후 Tesseract 확인
+      setTimeout(() => {
+        if (window.Tesseract) {
+          console.log('Tesseract.js 로드 성공')
+          resolve(window.Tesseract)
+        } else {
+          reject(new Error('Tesseract.js 로드 후에도 window.Tesseract가 없음'))
+        }
+      }, 500)
     }
     
-    tryLoadScript()
+    script.onerror = () => {
+      reject(new Error('Tesseract.js CDN 로드 실패'))
+    }
+    
+    document.head.appendChild(script)
   })
 }
 
@@ -287,9 +265,8 @@ const handleImageUpload = async (event: Event) => {
               if (m.status === 'recognizing text') {
                 console.log(`OCR 진행률: ${Math.round(m.progress * 100)}%`)
               }
-            },
-            workerPath: 'https://unpkg.com/tesseract.js@5.0.2/dist/worker.min.js',
-            corePath: 'https://unpkg.com/tesseract.js@5.0.2/dist/tesseract-core.wasm.js'
+            }
+            // Worker 경로는 자동으로 설정됨
           }
         )
         
