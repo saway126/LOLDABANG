@@ -157,6 +157,18 @@
                 <div class="player-role" v-if="player.preferredRole !== 'FILL'">
                   {{ getRoleText(player.preferredRole) }}
                 </div>
+                <!-- 추가 리그 정보 -->
+                <div class="player-stats" v-if="player.league">
+                  <div class="win-rate" v-if="player.league.wins + player.league.losses > 0">
+                    승률: {{ Math.round((player.league.wins / (player.league.wins + player.league.losses)) * 100) }}%
+                  </div>
+                  <div class="league-badges">
+                    <span v-if="player.league.hotStreak" class="badge hot-streak">🔥 연승</span>
+                    <span v-if="player.league.veteran" class="badge veteran">⭐ 베테랑</span>
+                    <span v-if="player.league.freshBlood" class="badge fresh-blood">🆕 신규</span>
+                    <span v-if="player.league.inactive" class="badge inactive">😴 비활성</span>
+                  </div>
+                </div>
               </div>
               <div class="player-score">점수: {{ player.score || 0 }}</div>
             </div>
@@ -412,6 +424,7 @@ const addPlayer = async () => {
     lp: 0,
     score: 0,
     championMasteries: [],
+    league: null, // 리그 정보 추가
     assignedRole: '',
     isTeamLeader: false
   }
@@ -429,6 +442,7 @@ const addPlayer = async () => {
       player.rank = league?.rank || 'IV'
       player.lp = league?.leaguePoints || 0
       player.championMasteries = data.champion_masteries || []
+      player.league = league || null // 리그 정보 저장
       player.score = calculatePlayerScore(data)
       player.loading = false
     } else {
@@ -436,6 +450,7 @@ const addPlayer = async () => {
       player.rank = 'IV'
       player.lp = 0
       player.score = 0
+      player.league = null
       player.loading = false
     }
   } catch (error) {
@@ -444,6 +459,7 @@ const addPlayer = async () => {
     player.rank = 'IV'
     player.lp = 0
     player.score = 0
+    player.league = null
     player.loading = false
   }
 }
@@ -469,7 +485,39 @@ const calculatePlayerScore = (playerData) => {
     masteryBonus = Math.floor(avgMastery * 0.1)
   }
   
-  return baseScore + rankBonus + lpBonus + masteryBonus
+  // 공식 가이드 기반 추가 보너스
+  let additionalBonus = 0
+  
+  // Hot Streak 보너스 (연승 중일 때)
+  if (league.hotStreak) {
+    additionalBonus += 50
+  }
+  
+  // Veteran 보너스 (경험 많은 플레이어)
+  if (league.veteran) {
+    additionalBonus += 30
+  }
+  
+  // Fresh Blood 보너스 (신규 유저)
+  if (league.freshBlood) {
+    additionalBonus += 20
+  }
+  
+  // 승률 보너스 (60% 이상일 때)
+  const totalGames = league.wins + league.losses
+  if (totalGames > 0) {
+    const winRate = (league.wins / totalGames) * 100
+    if (winRate >= 60) {
+      additionalBonus += Math.floor(winRate - 50) // 60% 이상일 때 추가 점수
+    }
+  }
+  
+  // 비활성 상태 페널티
+  if (league.inactive) {
+    additionalBonus -= 100
+  }
+  
+  return Math.max(0, baseScore + rankBonus + lpBonus + masteryBonus + additionalBonus)
 }
 
 const removePlayer = (index) => {
@@ -985,6 +1033,50 @@ onMounted(() => {
 .player-score {
   color: #666;
   font-size: 0.8rem;
+}
+
+.player-stats {
+  margin-top: 5px;
+  font-size: 0.8rem;
+}
+
+.win-rate {
+  color: #28a745;
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+
+.league-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.badge {
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.badge.hot-streak {
+  background: #ff6b6b;
+  color: white;
+}
+
+.badge.veteran {
+  background: #ffd93d;
+  color: #333;
+}
+
+.badge.fresh-blood {
+  background: #4ecdc4;
+  color: white;
+}
+
+.badge.inactive {
+  background: #95a5a6;
+  color: white;
 }
 
 .player-actions {

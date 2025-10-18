@@ -64,8 +64,22 @@ class RiotAPIService:
                 async with session.get(url, headers=headers) as response:
                     if response.status == 200:
                         data = await response.json()
-                        # 솔로랭크만 필터링
-                        return [entry for entry in data if entry.get('queueType') == 'RANKED_SOLO_5x5']
+                        # 솔로랭크만 필터링하고 상세 정보 포함
+                        solo_entries = [entry for entry in data if entry.get('queueType') == 'RANKED_SOLO_5x5']
+                        
+                        # 각 엔트리에 추가 정보 계산
+                        for entry in solo_entries:
+                            # 승률 계산
+                            total_games = entry.get('wins', 0) + entry.get('losses', 0)
+                            entry['winRate'] = round((entry.get('wins', 0) / total_games * 100), 1) if total_games > 0 else 0
+                            
+                            # 티어+랭크 조합 문자열
+                            entry['tierRank'] = f"{entry.get('tier', 'UNRANKED')} {entry.get('rank', '')}"
+                            
+                            # 활성 상태 확인
+                            entry['isActive'] = not entry.get('inactive', True)
+                            
+                        return solo_entries
                     else:
                         return []
             except Exception as e:
