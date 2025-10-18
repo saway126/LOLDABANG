@@ -32,6 +32,58 @@
         </div>
       </div>
 
+      <!-- 밴픽 관리 카드 -->
+      <div 
+        class="type-card banpick-card"
+        @click="goToBanPick"
+      >
+        <div class="card-image-container">
+          <div class="banpick-background">
+            <div class="banpick-animation">⚔️</div>
+          </div>
+          <div class="image-overlay"></div>
+          <div class="card-header">
+            <div class="type-icon">🎯</div>
+            <div class="match-count-badge banpick-badge">
+              밴픽
+            </div>
+          </div>
+        </div>
+        <div class="card-content">
+          <h3 class="type-name">실시간 밴픽 관리</h3>
+          <p class="type-desc">챔피언 밴픽과 이전 게임 기록을 실시간으로 관리하세요</p>
+          <div class="card-footer">
+            <div class="click-hint">클릭하여 밴픽 관리</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 밸런스 분석 카드 -->
+      <div 
+        class="type-card balance-card"
+        @click="goToRealtimeBalance"
+      >
+        <div class="card-image-container">
+          <div class="balance-background">
+            <div class="balance-animation">⚖️</div>
+          </div>
+          <div class="image-overlay"></div>
+          <div class="card-header">
+            <div class="type-icon">🤖</div>
+            <div class="match-count-badge balance-badge">
+              AI 분석
+            </div>
+          </div>
+        </div>
+        <div class="card-content">
+          <h3 class="type-name">실시간 밸런스 분석</h3>
+          <p class="type-desc">AI 기반 팀 밸런스 분석과 실시간 추천을 받아보세요</p>
+          <div class="card-footer">
+            <div class="click-hint">클릭하여 밸런스 분석</div>
+          </div>
+        </div>
+      </div>
+
       <!-- 기존 내전 종류 카드들 -->
       <div 
         v-for="matchType in matchTypes" 
@@ -232,6 +284,14 @@ const fetchMatchCounts = async () => {
 // 내전 관리 함수들
 const goToRealtime = () => {
   router.push('/realtime')
+}
+
+const goToBanPick = () => {
+  router.push('/banpick')
+}
+
+const goToRealtimeBalance = () => {
+  router.push('/realtime-balance')
 }
 
 const viewMatch = (match: any) => {
@@ -721,5 +781,103 @@ window.addEventListener('focus', () => {
   .type-desc {
     font-size: 0.85rem;
   }
+}
+
+/* 밴픽 카드 스타일 */
+.banpick-card {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  color: white;
+  border: 2px solid #ff6b6b;
+}
+
+.banpick-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(255, 107, 107, 0.3);
+  border-color: #ff5252;
+}
+
+.banpick-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.banpick-animation {
+  font-size: 3rem;
+  animation: banpickPulse 2s ease-in-out infinite;
+}
+
+@keyframes banpickPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+.banpick-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+/* 밸런스 카드 스타일 */
+.balance-card {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+  border: 2px solid #4CAF50;
+}
+
+.balance-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(76, 175, 80, 0.3);
+  border-color: #45a049;
+}
+
+.balance-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, #4CAF50, #45a049);
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.balance-animation {
+  font-size: 3rem;
+  animation: balancePulse 2s ease-in-out infinite;
+}
+
+@keyframes balancePulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+.balance-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
 }
 </style>

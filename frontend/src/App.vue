@@ -37,11 +37,15 @@
     <main class="main">
       <router-view />
     </main>
+    
+    <!-- 실시간 알림 컴포넌트 -->
+    <RealtimeNotification />
   </div>
 </template>
 
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
+import RealtimeNotification from './components/RealtimeNotification.vue'
 </script>
 
 <style scoped>
