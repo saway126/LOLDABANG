@@ -315,14 +315,37 @@ const parseKakaoTalk = (text: string): { players: Player[]; errors: string[] } =
       // 빈 라인 스킵
       if (!normalized) return
       
-      // 닉네임#태그 패턴 찾기 (더 유연하게)
-      // 닉네임#태그 형식 매칭 - 공백 허용, OCR 오류 대응
-      const nameMatch = normalized.match(/^([^#\s]+(?:#[^\s]+)?)/)
+      // 닉네임#태그 패턴 찾기 (매우 유연하게)
+      // 다양한 형식 지원: 닉네임#태그, 닉네임, 숫자@숫자 등
+      let nameMatch = normalized.match(/^([^#\s]+(?:#[^\s]+)?)/)
+      
+      // 첫 번째 패턴이 실패하면 다른 패턴들 시도
+      if (!nameMatch) {
+        // 숫자@숫자 형식 (100@01)
+        nameMatch = normalized.match(/^(\d+@\d+)/)
+      }
+      
+      if (!nameMatch) {
+        // 한글 닉네임만 있는 경우 (엄마지키는게임)
+        nameMatch = normalized.match(/^([가-힣]+)/)
+      }
+      
+      if (!nameMatch) {
+        // 영문 닉네임만 있는 경우 (Evan)
+        nameMatch = normalized.match(/^([A-Za-z]+)/)
+      }
+      
       if (!nameMatch) {
         // 시간 정보만 있는 라인은 스킵
         if (line.includes('시간') || line.includes('분')) return
         
-        throw new Error(`Invalid name format: ${line}`)
+        // 마지막 시도: 첫 번째 단어를 닉네임으로 사용
+        const firstWord = normalized.split(' ')[0]
+        if (firstWord && firstWord.length > 0) {
+          nameMatch = [firstWord, firstWord]
+        } else {
+          throw new Error(`Invalid name format: ${line}`)
+        }
       }
       
       const name = nameMatch[1]
@@ -456,6 +479,9 @@ const parseKakaoTalk = (text: string): { players: Player[]; errors: string[] } =
         'ㅇ ㄷ': 'ADC',
         'ㅅ ㅍ': 'SUPPORT',
         
+        // 부분 매칭을 위한 키워드
+        '서풋': 'SUPPORT',
+        
         // 복합 라인명
         '정글서폿': 'JUNGLE SUPPORT',
         '정글탑': 'JUNGLE TOP',
@@ -464,15 +490,25 @@ const parseKakaoTalk = (text: string): { players: Player[]; errors: string[] } =
         '서폿원딜': 'SUPPORT ADC'
       }
       
-      // 메인 라인 정규화
-      mainLane = laneMapping[mainLane] || mainLane.toUpperCase()
+      // 메인 라인 정규화 (더 유연하게)
+      mainLane = laneMapping[mainLane] || 
+        Object.keys(laneMapping).find(key => mainLane.includes(key)) ? 
+        laneMapping[Object.keys(laneMapping).find(key => mainLane.includes(key))!] : 
+        mainLane.toUpperCase()
       
       const finalPreferredLanes = preferredLanes.map(l => {
+        // 복합 라인명 처리
         if (l.includes('정글서폿')) return 'JUNGLE SUPPORT'
         if (l.includes('정글탑')) return 'JUNGLE TOP'
         if (l.includes('미드탑')) return 'MID TOP'
         if (l.includes('원딜서폿')) return 'ADC SUPPORT'
         if (l.includes('ㅁㄷㅇㄷ')) return 'MID ADC'
+        
+        // 부분 매칭 시도
+        const partialMatch = Object.keys(laneMapping).find(key => l.includes(key))
+        if (partialMatch) {
+          return laneMapping[partialMatch]
+        }
         
         return laneMapping[l] || l.toUpperCase()
       }).filter(l => l)
