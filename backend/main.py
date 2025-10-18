@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -12,9 +12,56 @@ import re
 from datetime import datetime
 import uvicorn
 import os
+import asyncio
 from riot_api import riot_api
 
 app = FastAPI(title="LoL Custom Match Tool API", version="1.0.0")
+
+# WebSocket 연결 관리
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+        self.admin_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket, is_admin: bool = False):
+        await websocket.accept()
+        if is_admin:
+            self.admin_connections.append(websocket)
+        else:
+            self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket, is_admin: bool = False):
+        if is_admin:
+            if websocket in self.admin_connections:
+                self.admin_connections.remove(websocket)
+        else:
+            if websocket in self.active_connections:
+                self.active_connections.remove(websocket)
+
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        try:
+            await websocket.send_text(message)
+        except:
+            pass
+
+    async def broadcast_to_admins(self, message: str):
+        for connection in self.admin_connections:
+            try:
+                await connection.send_text(message)
+            except:
+                self.admin_connections.remove(connection)
+
+    async def broadcast_to_all(self, message: str):
+        for connection in self.active_connections + self.admin_connections:
+            try:
+                await connection.send_text(message)
+            except:
+                if connection in self.active_connections:
+                    self.active_connections.remove(connection)
+                if connection in self.admin_connections:
+                    self.admin_connections.remove(connection)
+
+manager = ConnectionManager()
 
 # 데이터베이스 파일 경로 설정
 # Railway 환경 감지 (여러 방법으로 확인)
@@ -620,6 +667,34 @@ async def get_champion_info(champion_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ===== WebSocket 실시간 통신 =====
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # 클라이언트로부터 메시지 수신 처리
+            message = json.loads(data)
+            if message.get("type") == "ping":
+                await manager.send_personal_message(json.dumps({"type": "pong"}), websocket)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+@app.websocket("/ws/admin")
+async def websocket_admin_endpoint(websocket: WebSocket):
+    await manager.connect(websocket, is_admin=True)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # 관리자 메시지 처리
+            message = json.loads(data)
+            if message.get("type") == "ping":
+                await manager.send_personal_message(json.dumps({"type": "pong"}), websocket)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, is_admin=True)
+
 # ===== 실시간 내전 상태 관리 =====
 
 @app.get("/api/matches/realtime")
@@ -680,20 +755,72 @@ async def update_match_status(match_id: int, status_data: dict):
         if new_status not in ['open', 'closed', 'in_progress', 'completed']:
             raise HTTPException(status_code=400, detail="유효하지 않은 상태입니다.")
         
+        # 기존 상태 조회
+        cursor.execute("SELECT customId, host, type, status FROM matches WHERE id = ?", (match_id,))
+        match_info = cursor.fetchone()
+        
+        if not match_info:
+            raise HTTPException(status_code=404, detail="내전을 찾을 수 없습니다.")
+        
         cursor.execute("""
             UPDATE matches 
             SET status = ?, updatedAt = datetime('now', '+9 hours')
             WHERE id = ?
         """, (new_status, match_id))
         
-        if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="내전을 찾을 수 없습니다.")
-        
         conn.commit()
+        
+        # 실시간 알림 전송
+        notification = {
+            "type": "match_status_update",
+            "match_id": match_id,
+            "custom_id": match_info[0],
+            "host": match_info[1],
+            "match_type": match_info[2],
+            "old_status": match_info[3],
+            "new_status": new_status,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        await manager.broadcast_to_all(json.dumps(notification))
+        
         return {"message": f"내전 상태가 {new_status}로 업데이트되었습니다."}
         
     except Exception as e:
         conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.post("/api/matches/{match_id}/notify")
+async def send_match_notification(match_id: int, notification_data: dict):
+    """내전 알림 전송 (관리자용)"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("SELECT customId, host, type FROM matches WHERE id = ?", (match_id,))
+        match_info = cursor.fetchone()
+        
+        if not match_info:
+            raise HTTPException(status_code=404, detail="내전을 찾을 수 없습니다.")
+        
+        notification = {
+            "type": "admin_notification",
+            "match_id": match_id,
+            "custom_id": match_info[0],
+            "host": match_info[1],
+            "match_type": match_info[2],
+            "message": notification_data.get('message', ''),
+            "priority": notification_data.get('priority', 'normal'),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        await manager.broadcast_to_all(json.dumps(notification))
+        
+        return {"message": "알림이 전송되었습니다."}
+        
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
