@@ -101,7 +101,6 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useWebSocket } from '../composables/useWebSocket'
 
 // 반응형 데이터
 const notifications = ref([])

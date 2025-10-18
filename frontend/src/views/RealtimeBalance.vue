@@ -334,7 +334,6 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useWebSocket } from '../composables/useWebSocket'
 
 // API 설정
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://loldabang-production.up.railway.app/api'
