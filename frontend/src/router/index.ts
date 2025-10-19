@@ -6,6 +6,7 @@ import MatchDetail from '../views/MatchDetail.vue'
 import Realtime from '../views/Realtime.vue'
 import RealtimeBanPick from '../views/RealtimeBanPick.vue'
 import RealtimeBalance from '../views/RealtimeBalance.vue'
+import RiotBalance from '../views/RiotBalance.vue'
 
 const routes = [
   { path: '/', name: 'Home', component: Home },
@@ -14,7 +15,8 @@ const routes = [
   { path: '/match/:id', name: 'MatchDetail', component: MatchDetail },
   { path: '/realtime', name: 'Realtime', component: Realtime },
   { path: '/banpick', name: 'RealtimeBanPick', component: RealtimeBanPick },
-  { path: '/realtime-balance', name: 'RealtimeBalance', component: RealtimeBalance }
+  { path: '/realtime-balance', name: 'RealtimeBalance', component: RealtimeBalance },
+  { path: '/riot-balance', name: 'RiotBalance', component: RiotBalance }
 ]
 
 const router = createRouter({

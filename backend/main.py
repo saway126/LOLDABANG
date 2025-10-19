@@ -14,6 +14,7 @@ import uvicorn
 import os
 import asyncio
 from riot_api import riot_api, RiotAPIService
+from routers import riot_balance
 
 app = FastAPI(title="LoL Custom Match Tool API", version="1.0.0")
 
@@ -839,7 +840,8 @@ async def send_match_notification(match_id: int, notification_data: dict):
 # Vercel 핸들러
 handler = app
 
-
+# 라이엇 밸런싱 라우터 포함
+app.include_router(riot_balance.router)
 
 if __name__ == "__main__":
     try:

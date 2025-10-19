@@ -32,6 +32,10 @@
         <div class="nav-icon">⚖️</div>
         <div class="nav-text">밸런스 조율</div>
       </router-link>
+      <router-link to="/riot-balance" class="nav-item">
+        <div class="nav-icon">🔍</div>
+        <div class="nav-text">라이엇 밸런싱</div>
+      </router-link>
     </nav>
     
     <main class="main">
