@@ -43,6 +43,18 @@
       </div>
       
       <div class="form-section">
+        <h3 class="section-title">🔍 Riot ID 가져오기 (클립보드/이미지 OCR)</h3>
+        <details class="mb-4">
+          <summary class="cursor-pointer font-semibold text-lg mb-4 p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+            ⚙️ Riot ID 가져오기 도구 열기
+          </summary>
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <RiotIdImportPanel @done="onRiotIdImport" />
+          </div>
+        </details>
+      </div>
+      
+      <div class="form-section">
         <h3 class="section-title">💬 카카오톡 댓글 파싱</h3>
         <div class="parsing-container">
           <div class="form-group">
@@ -132,6 +144,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import RiotIdImportPanel from '../components/RiotIdImportPanel.vue'
+import type { RiotId } from '../utils/parseRiotIds'
 
 // Tesseract.js 타입 선언
 declare global {
@@ -154,6 +168,23 @@ const parsedPlayers = ref<Player[]>([])
 const selectedPlayers = ref<string[]>([])
 const imageInput = ref<HTMLInputElement | null>(null)
 const ocrLoading = ref(false)
+
+// Riot ID 가져오기 핸들러
+function onRiotIdImport(riotIds: RiotId[]) {
+  // Riot ID를 Player 형태로 변환
+  const players: Player[] = riotIds.slice(0, 10).map(riotId => ({
+    name: `${riotId.gameName}#${riotId.tagLine}`,
+    tier: 'UNRANKED', // Riot ID로 가져온 경우 티어는 UNRANKED로 설정
+    mainLane: 'UNKNOWN',
+    preferredLanes: ['UNKNOWN']
+  }))
+  
+  parsedPlayers.value = players
+  selectedPlayers.value = players.map(p => p.name)
+  
+  // 성공 메시지 표시
+  alert(`${players.length}명의 Riot ID를 성공적으로 가져왔습니다!`)
+}
 
 // 수정 모드 관련 변수들
 const isEditMode = ref(false)

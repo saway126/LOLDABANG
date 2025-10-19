@@ -14,7 +14,7 @@ import uvicorn
 import os
 import asyncio
 from riot_api import riot_api, RiotAPIService
-from routers import riot_balance
+from routers import riot_balance, riot_account_proxy
 
 app = FastAPI(title="LoL Custom Match Tool API", version="1.0.0")
 
@@ -842,6 +842,7 @@ handler = app
 
 # 라이엇 밸런싱 라우터 포함
 app.include_router(riot_balance.router)
+app.include_router(riot_account_proxy.router)
 
 if __name__ == "__main__":
     try:
