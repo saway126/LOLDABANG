@@ -13,9 +13,12 @@ from datetime import datetime
 import uvicorn
 import os
 import asyncio
-from riot_api import riot_api
+from riot_api import riot_api, RiotAPIService
 
 app = FastAPI(title="LoL Custom Match Tool API", version="1.0.0")
+
+# 라이엇 API 서비스 인스턴스
+riot_service = RiotAPIService()
 
 # WebSocket 연결 관리
 class ConnectionManager:
@@ -859,3 +862,52 @@ if __name__ == "__main__":
         # Railway에서 크래시 방지를 위해 기본 설정으로 재시도
         print("기본 설정으로 재시도...")
         uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# 라이엇 API 엔드포인트
+@app.get("/api/riot/summoner/{game_name}/{tag_line}")
+async def get_summoner_by_riot_id(game_name: str, tag_line: str):
+    """라이엇 ID로 소환사 정보 조회"""
+    try:
+        result = await riot_service.get_summoner_by_riot_id(game_name, tag_line)
+        if result:
+            return {"success": True, "data": result}
+        else:
+            return {"success": False, "message": "소환사를 찾을 수 없습니다."}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@app.get("/api/riot/summoner/puuid/{puuid}")
+async def get_summoner_by_puuid(puuid: str):
+    """PUUID로 소환사 상세 정보 조회"""
+    try:
+        result = await riot_service.get_summoner_by_puuid(puuid)
+        if result:
+            return {"success": True, "data": result}
+        else:
+            return {"success": False, "message": "소환사를 찾을 수 없습니다."}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@app.get("/api/riot/league/{summoner_id}")
+async def get_summoner_league(summoner_id: str):
+    """소환사 리그 정보 조회"""
+    try:
+        result = await riot_service.get_summoner_league(summoner_id)
+        if result:
+            return {"success": True, "data": result}
+        else:
+            return {"success": False, "message": "리그 정보를 찾을 수 없습니다."}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@app.get("/api/riot/champion-mastery/{summoner_id}")
+async def get_champion_mastery(summoner_id: str):
+    """소환사 챔피언 숙련도 조회"""
+    try:
+        result = await riot_service.get_champion_mastery(summoner_id)
+        if result:
+            return {"success": True, "data": result}
+        else:
+            return {"success": False, "message": "챔피언 숙련도 정보를 찾을 수 없습니다."}
+    except Exception as e:
+        return {"success": False, "message": str(e)}

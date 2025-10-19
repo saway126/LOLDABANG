@@ -378,6 +378,15 @@ onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
 })
 
+// 컴포넌트 외부에서 사용할 수 있도록 함수들을 expose
+defineExpose({
+  addNotification,
+  removeNotification,
+  markAsRead,
+  markAllAsRead,
+  clearAllNotifications
+})
+
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
 })

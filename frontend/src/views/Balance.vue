@@ -68,6 +68,14 @@
                       (희망: {{ player.preferredLanes.join(', ') }})
                     </span>
                   </span>
+                  <button 
+                    @click.stop="loadRiotData(player)" 
+                    class="riot-api-btn"
+                    :disabled="loading"
+                    v-if="player.name.includes('#')"
+                  >
+                    🔍 라이엇 데이터
+                  </button>
                 </div>
               </div>
             </div>
@@ -243,6 +251,93 @@ const getNotificationTitle = (type) => {
     'info': '알림'
   }
   return titles[type] || '알림'
+}
+
+// 라이엇 API 연동 함수들
+const fetchRiotData = async (player) => {
+  try {
+    // 라이엇 ID 파싱 (예: "무무와벡스#kr1" -> "무무와벡스", "kr1")
+    const [gameName, tagLine] = player.name.split('#')
+    
+    if (!gameName || !tagLine) {
+      throw new Error('올바른 라이엇 ID 형식이 아닙니다. (예: 소환사명#태그)')
+    }
+    
+    showNotification(`라이엇 API에서 ${player.name} 정보를 가져오는 중...`, 'info')
+    
+    // 1. 라이엇 ID로 계정 정보 조회
+    const accountResponse = await fetch(`${API_BASE_URL}/riot/summoner/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`)
+    const accountData = await accountResponse.json()
+    
+    if (!accountData.success) {
+      throw new Error(accountData.message || '계정 정보를 찾을 수 없습니다.')
+    }
+    
+    const account = accountData.data
+    const puuid = account.puuid
+    
+    // 2. PUUID로 소환사 상세 정보 조회
+    const summonerResponse = await fetch(`${API_BASE_URL}/riot/summoner/puuid/${puuid}`)
+    const summonerData = await summonerResponse.json()
+    
+    if (!summonerData.success) {
+      throw new Error(summonerData.message || '소환사 정보를 찾을 수 없습니다.')
+    }
+    
+    const summoner = summonerData.data
+    
+    // 3. 리그 정보 조회
+    const leagueResponse = await fetch(`${API_BASE_URL}/riot/league/${summoner.id}`)
+    const leagueData = await leagueResponse.json()
+    
+    // 4. 챔피언 숙련도 조회
+    const masteryResponse = await fetch(`${API_BASE_URL}/riot/champion-mastery/${summoner.id}`)
+    const masteryData = await masteryResponse.json()
+    
+    // 5. 플레이어 정보 업데이트
+    const updatedPlayer = {
+      ...player,
+      summonerLevel: summoner.summonerLevel,
+      profileIconId: summoner.profileIconId,
+      league: leagueData.success ? leagueData.data : null,
+      championMasteries: masteryData.success ? masteryData.data : [],
+      lastUpdated: new Date().toISOString()
+    }
+    
+    // 6. 로컬 스토리지에 저장
+    const savedPlayers = JSON.parse(localStorage.getItem('riotPlayers') || '{}')
+    savedPlayers[player.name] = updatedPlayer
+    localStorage.setItem('riotPlayers', JSON.stringify(savedPlayers))
+    
+    showNotification(`${player.name}의 라이엇 데이터를 성공적으로 가져왔습니다!`, 'success')
+    
+    return updatedPlayer
+    
+  } catch (error) {
+    console.error('라이엇 API 호출 실패:', error)
+    showNotification(`라이엇 API 호출 실패: ${error.message}`, 'error')
+    return player
+  }
+}
+
+const loadRiotData = async (player) => {
+  // 로컬 스토리지에서 캐시된 데이터 확인
+  const savedPlayers = JSON.parse(localStorage.getItem('riotPlayers') || '{}')
+  const cachedPlayer = savedPlayers[player.name]
+  
+  if (cachedPlayer && cachedPlayer.lastUpdated) {
+    const lastUpdated = new Date(cachedPlayer.lastUpdated)
+    const now = new Date()
+    const hoursDiff = (now - lastUpdated) / (1000 * 60 * 60)
+    
+    // 1시간 이내의 데이터면 캐시 사용
+    if (hoursDiff < 1) {
+      return cachedPlayer
+    }
+  }
+  
+  // 캐시가 없거나 오래된 경우 API 호출
+  return await fetchRiotData(player)
 }
 
 const selectMatch = async (matchId: number) => {
@@ -600,6 +695,29 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+}
+
+.riot-api-btn {
+  background: rgba(139, 69, 19, 0.1);
+  color: var(--primary-color);
+  border: 1px solid rgba(139, 69, 19, 0.3);
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 0.3rem;
+}
+
+.riot-api-btn:hover:not(:disabled) {
+  background: var(--primary-color);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.riot-api-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .tier-badge {

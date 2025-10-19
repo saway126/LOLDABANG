@@ -521,6 +521,7 @@ const refreshData = () => {
 const updateMatchStatus = async (matchId, newStatus) => {
   try {
     console.log(`🔄 내전 ${matchId} 상태를 ${newStatus}로 변경 중...`)
+    console.log(`📊 matchId 타입: ${typeof matchId}, 값: ${matchId}`)
     
     const response = await fetch(`${API_BASE_URL}/matches/${matchId}/status`, {
       method: 'PUT',
