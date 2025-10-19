@@ -198,11 +198,26 @@ const connectWebSocket = () => {
     
     ws.value = new WebSocket(WS_URL)
     
+    // 연결 타임아웃 설정 (10초)
+    const connectionTimeout = setTimeout(() => {
+      if (ws.value && ws.value.readyState === WebSocket.CONNECTING) {
+        console.log('⏰ WebSocket 연결 타임아웃')
+        ws.value.close()
+        wsConnected.value = false
+        startPolling()
+      }
+    }, 10000)
+    
     ws.value.onopen = () => {
+      clearTimeout(connectionTimeout)
       wsConnected.value = true
       console.log('✅ WebSocket 연결됨')
       // 연결 성공 시 ping 전송
-      ws.value.send(JSON.stringify({ type: 'ping' }))
+      try {
+        ws.value.send(JSON.stringify({ type: 'ping' }))
+      } catch (error) {
+        console.error('❌ WebSocket ping 전송 실패:', error)
+      }
     }
     
     ws.value.onmessage = (event) => {
