@@ -1,48 +1,71 @@
 <template>
   <div class="notification-container">
-    <!-- 알림 목록 -->
-    <div class="notifications-list" v-if="notifications.length > 0">
-      <div 
-        v-for="notification in notifications" 
-        :key="notification.id"
-        class="notification-item"
-        :class="getNotificationClass(notification.type)"
-        @click="markAsRead(notification.id)"
-      >
-        <div class="notification-icon">
-          {{ getNotificationIcon(notification.type) }}
-        </div>
-        <div class="notification-content">
-          <div class="notification-title">
-            {{ getNotificationTitle(notification.type) }}
-          </div>
-          <div class="notification-message">
-            {{ notification.message }}
-          </div>
-          <div class="notification-time">
-            {{ formatTime(notification.timestamp) }}
-          </div>
-        </div>
-        <div class="notification-actions">
-          <button @click.stop="removeNotification(notification.id)" class="close-btn">
-            ✕
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- 알림 토글 버튼 -->
     <div class="notification-toggle">
       <button 
         @click="toggleNotifications" 
         class="toggle-btn"
         :class="{ active: showNotifications }"
+        :title="unreadCount > 0 ? `읽지 않은 알림 ${unreadCount}개` : '알림'"
       >
-        🔔
+        <span class="bell-icon">🔔</span>
         <span v-if="unreadCount > 0" class="unread-badge">
-          {{ unreadCount }}
+          {{ unreadCount > 99 ? '99+' : unreadCount }}
         </span>
       </button>
+    </div>
+
+    <!-- 알림 패널 -->
+    <div v-if="showNotifications" class="notification-panel">
+      <div class="panel-header">
+        <h3>알림</h3>
+        <div class="panel-actions">
+          <button @click="markAllAsRead" class="mark-all-btn" v-if="unreadCount > 0">
+            모두 읽음
+          </button>
+          <button @click="clearAllNotifications" class="clear-all-btn" v-if="notifications.length > 0">
+            모두 삭제
+          </button>
+          <button @click="toggleSettings" class="settings-btn">
+            ⚙️
+          </button>
+        </div>
+      </div>
+      
+      <div class="notifications-list" v-if="notifications.length > 0">
+        <div 
+          v-for="notification in notifications" 
+          :key="notification.id"
+          class="notification-item"
+          :class="[getNotificationClass(notification.type), { unread: !notification.read }]"
+          @click="markAsRead(notification.id)"
+        >
+          <div class="notification-icon">
+            {{ getNotificationIcon(notification.type) }}
+          </div>
+          <div class="notification-content">
+            <div class="notification-title">
+              {{ notification.title || getNotificationTitle(notification.type) }}
+            </div>
+            <div class="notification-message">
+              {{ notification.message }}
+            </div>
+            <div class="notification-time">
+              {{ formatTime(notification.timestamp) }}
+            </div>
+          </div>
+          <div class="notification-actions">
+            <button @click.stop="removeNotification(notification.id)" class="close-btn">
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div v-else class="no-notifications">
+        <div class="no-notifications-icon">🔕</div>
+        <p>새로운 알림이 없습니다</p>
+      </div>
     </div>
 
     <!-- 알림 설정 모달 -->
@@ -113,6 +136,11 @@ const settings = ref({
   soundEnabled: true
 })
 
+// 읽지 않은 알림 개수
+const unreadCount = computed(() => {
+  return notifications.value.filter(n => !n.read).length
+})
+
 // WebSocket 연결 (Railway WebSocket 지원 문제로 비활성화)
 const ws = ref(null)
 const isConnected = ref(false)
@@ -156,10 +184,6 @@ const send = (message) => {
   }
 }
 
-// 계산된 속성
-const unreadCount = computed(() => {
-  return notifications.value.filter(n => !n.read).length
-})
 
 // 메서드
 const handleWebSocketMessage = (data) => {
@@ -255,6 +279,20 @@ const removeNotification = (notificationId) => {
 
 const toggleNotifications = () => {
   showNotifications.value = !showNotifications.value
+}
+
+const markAllAsRead = () => {
+  notifications.value.forEach(notification => {
+    notification.read = true
+  })
+}
+
+const clearAllNotifications = () => {
+  notifications.value = []
+}
+
+const toggleSettings = () => {
+  showSettings.value = !showSettings.value
 }
 
 const getNotificationClass = (type) => {
@@ -451,45 +489,50 @@ onUnmounted(() => {
 }
 
 .toggle-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  color: white;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
+  background: rgba(139, 69, 19, 0.1);
+  border: 1px solid rgba(139, 69, 19, 0.2);
+  color: var(--primary-color);
+  padding: 8px 12px;
+  border-radius: 20px;
   cursor: pointer;
-  font-size: 1.2rem;
+  font-size: 1rem;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 5px;
   transition: all 0.3s ease;
   position: relative;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  min-width: 40px;
+  height: 36px;
 }
 
 .toggle-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  background: rgba(139, 69, 19, 0.2);
+  transform: translateY(-1px);
 }
 
 .toggle-btn.active {
-  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
 }
+
 
 .unread-badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #ff4444;
+  top: -8px;
+  right: -8px;
+  background: var(--error-color);
   color: white;
   border-radius: 50%;
-  width: 20px;
-  height: 20px;
+  min-width: 18px;
+  height: 18px;
   font-size: 0.7rem;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
+  padding: 0 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   animation: pulse 1s infinite;
 }
 
@@ -503,6 +546,73 @@ onUnmounted(() => {
   100% {
     transform: scale(1);
   }
+}
+
+/* 알림 패널 */
+.notification-panel {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  width: 350px;
+  max-height: 500px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(139, 69, 19, 0.1);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid rgba(139, 69, 19, 0.1);
+  background: rgba(139, 69, 19, 0.03);
+}
+
+.panel-header h3 {
+  margin: 0;
+  color: var(--primary-color);
+  font-size: 1.1rem;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mark-all-btn, .clear-all-btn, .settings-btn {
+  background: none;
+  border: 1px solid rgba(139, 69, 19, 0.2);
+  color: var(--primary-color);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mark-all-btn:hover, .clear-all-btn:hover, .settings-btn:hover {
+  background: rgba(139, 69, 19, 0.1);
+}
+
+.no-notifications {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+}
+
+.no-notifications-icon {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  opacity: 0.6;
+}
+
+.notification-item.unread {
+  background: rgba(139, 69, 19, 0.03);
+  border-left: 4px solid var(--primary-color);
 }
 
 .notification-settings-modal {

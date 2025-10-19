@@ -11,6 +11,8 @@
         <div class="connection-status" :class="wsConnected ? 'connected' : 'polling'">
           {{ wsConnected ? '🟢 실시간 연결됨' : '🔄 폴링 모드 (30초마다 업데이트)' }}
         </div>
+        <!-- 알림 컴포넌트 -->
+        <RealtimeNotification ref="notificationComponent" />
       </div>
     </div>
 
@@ -225,6 +227,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import RealtimeNotification from '../components/RealtimeNotification.vue'
 
 // API 설정
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://loldabang-production.up.railway.app/api'
@@ -236,6 +239,7 @@ const selectedMatch = ref(null)
 const loading = ref(false)
 const wsConnected = ref(false)
 const ws = ref(null)
+const notificationComponent = ref(null)
 
 // 밴픽 관련
 const banPickPhase = ref('waiting') // waiting, ban, pick, completed
@@ -574,6 +578,16 @@ const formatDate = (dateString) => {
 }
 
 const showNotification = (message, type = 'info') => {
+  // 알림 컴포넌트에 전달
+  if (notificationComponent.value) {
+    notificationComponent.value.addNotification({
+      type,
+      title: getNotificationTitle(type),
+      message,
+      timestamp: new Date()
+    })
+  }
+  
   // 브라우저 알림 API 사용
   if ('Notification' in window) {
     if (Notification.permission === 'granted') {
@@ -596,17 +610,16 @@ const showNotification = (message, type = 'info') => {
   // 콘솔에도 로그 출력
   const timestamp = new Date().toLocaleTimeString('ko-KR')
   console.log(`[${timestamp}] ${type.toUpperCase()}: ${message}`)
-  
-  // 간단한 토스트 알림 (선택사항)
-  if (type === 'success') {
-    console.log('✅', message)
-  } else if (type === 'error') {
-    console.error('❌', message)
-  } else if (type === 'warning') {
-    console.warn('⚠️', message)
-  } else {
-    console.log('ℹ️', message)
+}
+
+const getNotificationTitle = (type) => {
+  const titles = {
+    'success': '성공',
+    'error': '오류',
+    'warning': '경고',
+    'info': '알림'
   }
+  return titles[type] || '알림'
 }
 
 // 라이프사이클

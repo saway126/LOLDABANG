@@ -34,6 +34,8 @@
         <div class="last-updated">
           마지막 업데이트: {{ lastUpdated }}
         </div>
+        <!-- 알림 컴포넌트 -->
+        <RealtimeNotification ref="notificationComponent" />
       </div>
     </div>
 
@@ -161,6 +163,7 @@
 <script setup>
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import RealtimeNotification from '../components/RealtimeNotification.vue'
 
 const router = useRouter()
 
@@ -175,6 +178,7 @@ const refreshInterval = ref(null)
 const wsConnected = ref(false)
 const ws = ref(null)
 const notifications = ref([])
+const notificationComponent = ref(null)
 
 // 계산된 속성
 const totalParticipants = computed(() => {
@@ -316,6 +320,16 @@ const addNotification = (type, title, message) => {
   setTimeout(() => {
     removeNotification(notification.id)
   }, 5000)
+  
+  // 알림 컴포넌트에 전달
+  if (notificationComponent.value) {
+    notificationComponent.value.addNotification({
+      type,
+      title,
+      message,
+      timestamp: new Date()
+    })
+  }
   
   // 브라우저 알림
   if ('Notification' in window && Notification.permission === 'granted') {
