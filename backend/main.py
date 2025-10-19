@@ -745,8 +745,8 @@ async def get_realtime_matches():
         conn.close()
 
 @app.put("/api/matches/{match_id}/status")
-async def update_match_status(match_id: int, status_data: dict):
-    """내전 상태 업데이트 (실시간 관리용)"""
+async def update_match_status(match_id: str, status_data: dict):
+    """내전 상태 업데이트 (실시간 관리용) - customId 또는 id 지원"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -755,29 +755,37 @@ async def update_match_status(match_id: int, status_data: dict):
         if new_status not in ['open', 'closed', 'in_progress', 'completed']:
             raise HTTPException(status_code=400, detail="유효하지 않은 상태입니다.")
         
-        # 기존 상태 조회
-        cursor.execute("SELECT customId, host, type, status FROM matches WHERE id = ?", (match_id,))
+        # customId 또는 id로 내전 찾기
+        if match_id.isdigit():
+            # 숫자 ID인 경우
+            cursor.execute("SELECT id, customId, host, type, status FROM matches WHERE id = ?", (int(match_id),))
+        else:
+            # customId인 경우
+            cursor.execute("SELECT id, customId, host, type, status FROM matches WHERE customId = ?", (match_id,))
+        
         match_info = cursor.fetchone()
         
         if not match_info:
             raise HTTPException(status_code=404, detail="내전을 찾을 수 없습니다.")
         
+        actual_id = match_info[0]  # 실제 데이터베이스 ID
+        
         cursor.execute("""
             UPDATE matches 
             SET status = ?, updatedAt = datetime('now', '+9 hours')
             WHERE id = ?
-        """, (new_status, match_id))
+        """, (new_status, actual_id))
         
         conn.commit()
         
         # 실시간 알림 전송
         notification = {
             "type": "match_status_update",
-            "match_id": match_id,
-            "custom_id": match_info[0],
-            "host": match_info[1],
-            "match_type": match_info[2],
-            "old_status": match_info[3],
+            "match_id": actual_id,
+            "custom_id": match_info[1],
+            "host": match_info[2],
+            "match_type": match_info[3],
+            "old_status": match_info[4],
             "new_status": new_status,
             "timestamp": datetime.now().isoformat()
         }

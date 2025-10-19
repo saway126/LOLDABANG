@@ -42,21 +42,21 @@
           <div class="match-actions" @click.stop>
             <button 
               v-if="match.status === 'open'" 
-              @click="updateMatchStatus(match.id, 'in_progress')" 
+              @click="updateMatchStatus(match.customId, 'in_progress')" 
               class="action-btn start"
             >
               ▶️ 시작
             </button>
             <button 
               v-if="match.status === 'in_progress'" 
-              @click="updateMatchStatus(match.id, 'completed')" 
+              @click="updateMatchStatus(match.customId, 'completed')" 
               class="action-btn end"
             >
               🏁 종료
             </button>
             <button 
               v-if="match.status === 'open'" 
-              @click="updateMatchStatus(match.id, 'closed')" 
+              @click="updateMatchStatus(match.customId, 'closed')" 
               class="action-btn close"
             >
               ❌ 취소

@@ -101,17 +101,17 @@
             <button @click="viewMatch(match.id)" class="action-btn view">
               👁️ 상세보기
             </button>
-            <button @click="updateMatchStatus(match.id, 'in_progress')" 
+            <button @click="updateMatchStatus(match.customId, 'in_progress')" 
                     v-if="match.status === 'open'" 
                     class="action-btn start">
               ▶️ 시작
             </button>
-            <button @click="updateMatchStatus(match.id, 'completed')" 
+            <button @click="updateMatchStatus(match.customId, 'completed')" 
                     v-if="match.status === 'in_progress'" 
                     class="action-btn complete">
               ✅ 완료
             </button>
-            <button @click="updateMatchStatus(match.id, 'closed')" 
+            <button @click="updateMatchStatus(match.customId, 'closed')" 
                     v-if="match.status === 'open'" 
                     class="action-btn close">
               ❌ 종료
@@ -244,10 +244,11 @@ const startPolling = () => {
   console.log('📡 폴링 방식으로 실시간 업데이트 시작')
   wsConnected.value = false // 폴링 모드 표시
   
-  // 5초마다 데이터 새로고침
+  // 30초마다 데이터 새로고침 (빈도 조정)
   const pollingInterval = setInterval(() => {
+    console.log('🔄 폴링으로 데이터 새로고침...')
     fetchRealtimeMatches()
-  }, 5000)
+  }, 30000)
   
   // 컴포넌트 언마운트 시 폴링 중지
   onUnmounted(() => {
