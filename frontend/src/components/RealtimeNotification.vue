@@ -20,13 +20,13 @@
       <div class="panel-header">
         <h3>알림</h3>
         <div class="panel-actions">
-          <button @click="markAllAsRead" class="mark-all-btn" v-if="unreadCount > 0">
+          <button @click="markAllAsRead" class="action-btn" v-if="unreadCount > 0">
             모두 읽음
           </button>
-          <button @click="clearAllNotifications" class="clear-all-btn" v-if="notifications.length > 0">
+          <button @click="clearAllNotifications" class="action-btn" v-if="notifications.length > 0">
             모두 삭제
           </button>
-          <button @click="toggleSettings" class="settings-btn">
+          <button @click="toggleSettings" class="settings-btn" title="알림 설정">
             ⚙️
           </button>
         </div>
@@ -69,48 +69,54 @@
     </div>
 
     <!-- 알림 설정 모달 -->
-    <div v-if="showSettings" class="notification-settings-modal">
-      <div class="modal-content">
+    <div v-if="showSettings" class="settings-modal-overlay" @click="showSettings = false">
+      <div class="settings-modal" @click.stop>
         <div class="modal-header">
-          <h3>알림 설정</h3>
-          <button @click="showSettings = false" class="close-btn">✕</button>
+          <h3>🔔 알림 설정</h3>
+          <button @click="showSettings = false" class="close-btn">×</button>
         </div>
         <div class="modal-body">
-          <div class="setting-item">
-            <label>
-              <input 
-                type="checkbox" 
-                v-model="settings.matchStatusUpdates"
-              />
-              내전 상태 변경 알림
-            </label>
-          </div>
-          <div class="setting-item">
-            <label>
-              <input 
-                type="checkbox" 
-                v-model="settings.adminNotifications"
-              />
-              관리자 알림
-            </label>
-          </div>
-          <div class="setting-item">
-            <label>
-              <input 
-                type="checkbox" 
-                v-model="settings.banPickUpdates"
-              />
-              밴픽 업데이트 알림
-            </label>
-          </div>
-          <div class="setting-item">
-            <label>
-              <input 
-                type="checkbox" 
-                v-model="settings.soundEnabled"
-              />
-              소리 알림
-            </label>
+          <div class="settings-grid">
+            <div class="setting-item">
+              <label class="setting-label">
+                <input 
+                  type="checkbox" 
+                  v-model="settings.matchStatusUpdates"
+                  class="setting-checkbox"
+                />
+                <span class="setting-text">내전 상태 변경 알림</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label class="setting-label">
+                <input 
+                  type="checkbox" 
+                  v-model="settings.adminNotifications"
+                  class="setting-checkbox"
+                />
+                <span class="setting-text">관리자 알림</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label class="setting-label">
+                <input 
+                  type="checkbox" 
+                  v-model="settings.banPickUpdates"
+                  class="setting-checkbox"
+                />
+                <span class="setting-text">밴픽 업데이트 알림</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label class="setting-label">
+                <input 
+                  type="checkbox" 
+                  v-model="settings.soundEnabled"
+                  class="setting-checkbox"
+                />
+                <span class="setting-text">소리 알림</span>
+              </label>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -592,19 +598,22 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-.mark-all-btn, .clear-all-btn, .settings-btn {
-  background: none;
+.action-btn, .settings-btn {
+  background: rgba(139, 69, 19, 0.1);
   border: 1px solid rgba(139, 69, 19, 0.2);
   color: var(--primary-color);
-  padding: 4px 8px;
+  padding: 6px 12px;
   border-radius: 6px;
   font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  margin-left: 4px;
 }
 
-.mark-all-btn:hover, .clear-all-btn:hover, .settings-btn:hover {
-  background: rgba(139, 69, 19, 0.1);
+.action-btn:hover, .settings-btn:hover {
+  background: var(--primary-color);
+  color: white;
+  transform: translateY(-1px);
 }
 
 .no-notifications {
@@ -624,26 +633,41 @@ onUnmounted(() => {
   border-left: 4px solid var(--primary-color);
 }
 
-.notification-settings-modal {
+/* 설정 모달 */
+.settings-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
+  height: 100%;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
+  backdrop-filter: blur(4px);
 }
 
-.modal-content {
+.settings-modal {
   background: white;
-  border-radius: 12px;
-  width: 400px;
-  max-width: 90vw;
-  max-height: 80vh;
-  overflow-y: auto;
+  border-radius: 16px;
+  padding: 0;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .modal-header {
@@ -651,69 +675,115 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #e0e0e0;
+  background: rgba(139, 69, 19, 0.05);
+  border-bottom: 1px solid rgba(139, 69, 19, 0.1);
 }
 
 .modal-header h3 {
   margin: 0;
-  color: #333;
+  color: var(--primary-color);
+  font-size: 1.1rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: rgba(139, 69, 19, 0.1);
+  color: var(--primary-color);
 }
 
 .modal-body {
   padding: 20px;
 }
 
-.setting-item {
-  margin-bottom: 15px;
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.setting-item label {
+.setting-item {
+  padding: 0;
+}
+
+.setting-label {
   display: flex;
   align-items: center;
   cursor: pointer;
-  font-size: 0.9rem;
-  color: #333;
+  padding: 12px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
 }
 
-.setting-item input[type="checkbox"] {
-  margin-right: 10px;
-  width: 16px;
-  height: 16px;
+.setting-label:hover {
+  background: rgba(139, 69, 19, 0.05);
+  border-color: rgba(139, 69, 19, 0.1);
+}
+
+.setting-checkbox {
+  margin-right: 12px;
+  transform: scale(1.3);
+  accent-color: var(--primary-color);
+}
+
+.setting-text {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
 .modal-footer {
   display: flex;
+  gap: 12px;
   justify-content: flex-end;
-  gap: 10px;
   padding: 20px;
-  border-top: 1px solid #e0e0e0;
+  background: rgba(139, 69, 19, 0.02);
+  border-top: 1px solid rgba(139, 69, 19, 0.1);
 }
 
 .save-btn, .cancel-btn {
-  padding: 8px 16px;
+  padding: 10px 20px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: bold;
-  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  min-width: 80px;
 }
 
 .save-btn {
-  background: #4CAF50;
+  background: var(--primary-color);
   color: white;
 }
 
 .save-btn:hover {
-  background: #45a049;
+  background: var(--primary-dark);
+  transform: translateY(-1px);
 }
 
 .cancel-btn {
-  background: #f0f0f0;
-  color: #666;
+  background: rgba(139, 69, 19, 0.1);
+  color: var(--primary-color);
+  border: 1px solid rgba(139, 69, 19, 0.2);
 }
 
 .cancel-btn:hover {
-  background: #e0e0e0;
+  background: rgba(139, 69, 19, 0.2);
 }
 
 @media (max-width: 768px) {
