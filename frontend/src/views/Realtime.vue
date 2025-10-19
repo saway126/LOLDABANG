@@ -180,15 +180,40 @@ const fetchRealtimeMatches = async () => {
       }
     }
     
-    // 최근 1시간 내 활성 내전만 필터링
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    // 최근 24시간 내 활성 내전만 필터링 (open과 in_progress 상태 모두 포함)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const filteredMatches = allMatches.filter(match => {
       const createdAt = new Date(match.createdAt)
-      return createdAt > oneHourAgo && match.status === 'open'
+      const isRecent = createdAt > oneDayAgo
+      const isActive = match.status === 'open' || match.status === 'in_progress'
+      
+      // 디버깅을 위한 로그
+      if (!isRecent) {
+        console.log(`⏰ 내전 ${match.customId}는 너무 오래됨: ${createdAt.toLocaleString()}`)
+      }
+      if (!isActive) {
+        console.log(`📊 내전 ${match.customId}는 비활성 상태: ${match.status}`)
+      }
+      
+      return isRecent && isActive
     })
     
     realtimeMatches.value = filteredMatches
+    
+    // 디버깅을 위한 상세 로그
     console.log(`🎯 총 ${allMatches.length}개 내전 중 ${filteredMatches.length}개 활성 내전 표시`)
+    console.log('📋 모든 내전 목록:', allMatches.map(m => ({
+      customId: m.customId,
+      status: m.status,
+      createdAt: m.createdAt,
+      type: m.type
+    })))
+    console.log('✅ 활성 내전 목록:', filteredMatches.map(m => ({
+      customId: m.customId,
+      status: m.status,
+      createdAt: m.createdAt,
+      type: m.type
+    })))
     
     lastUpdated.value = new Date().toLocaleTimeString('ko-KR')
     
