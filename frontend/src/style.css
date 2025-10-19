@@ -1,5 +1,33 @@
 /* 롤다방(LDB) 내전프로그램 전역 스타일 */
 
+:root {
+  /* 주 색상 */
+  --primary-color: #8B4513;
+  --primary-light: #A0522D;
+  --primary-dark: #654321;
+  
+  /* 배경 색상 */
+  --bg-gradient-start: #f5f1e8;
+  --bg-gradient-end: #e8dcc0;
+  --card-bg: #ffffff;
+  
+  /* 상태 색상 */
+  --success-color: #4CAF50;
+  --warning-color: #FF9800;
+  --error-color: #f44336;
+  --info-color: #2196F3;
+  
+  /* 텍스트 색상 */
+  --text-primary: #8B4513;
+  --text-secondary: #666;
+  --text-light: #999;
+  
+  /* 그림자 */
+  --shadow-sm: 0 2px 4px rgba(139, 69, 19, 0.1);
+  --shadow-md: 0 4px 8px rgba(139, 69, 19, 0.15);
+  --shadow-lg: 0 8px 16px rgba(139, 69, 19, 0.2);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -8,9 +36,9 @@
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #f5f1e8 0%, #e8dcc0 100%);
+  background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
   min-height: 100vh;
-  color: #8B4513;
+  color: var(--text-primary);
   line-height: 1.6;
 }
 

@@ -605,7 +605,7 @@ onMounted(() => {
 }
 
 .balance-btn {
-  background: linear-gradient(135deg, #8B4513, #A0522D);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
   color: white;
   border: none;
   padding: 1.2rem 3rem;

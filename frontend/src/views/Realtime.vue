@@ -44,7 +44,7 @@
       <!-- 실시간 상태 표시 -->
       <div class="realtime-status">
         <div class="status-indicator" :class="wsConnected ? 'connected' : 'polling'">
-          {{ wsConnected ? '🟢 실시간 연결됨' : '🔄 폴링 모드 (5초마다 업데이트)' }}
+          {{ wsConnected ? '🟢 실시간 연결됨' : '🔄 폴링 모드 (30초마다 업데이트)' }}
         </div>
         <div class="last-updated">
           마지막 업데이트: {{ lastUpdated }}
@@ -486,7 +486,7 @@ onUnmounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
   min-height: 100vh;
   position: relative;
 }
@@ -603,8 +603,9 @@ onUnmounted(() => {
 }
 
 .status-indicator.polling {
-  background: rgba(255, 152, 0, 0.2);
-  color: #FF9800;
+  background: rgba(139, 69, 19, 0.1);
+  color: var(--text-secondary);
+  border: 1px solid rgba(139, 69, 19, 0.2);
 }
 
 .realtime-header {
@@ -612,7 +613,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(139, 69, 19, 0.1);
   padding: 20px;
   border-radius: 15px;
   backdrop-filter: blur(10px);
@@ -695,12 +696,15 @@ onUnmounted(() => {
 .no-matches {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: var(--text-secondary);
+  background: rgba(139, 69, 19, 0.03);
+  border-radius: 12px;
 }
 
 .no-matches-icon {
-  font-size: 4rem;
-  margin-bottom: 20px;
+  font-size: 2rem;
+  margin-bottom: 12px;
+  opacity: 0.6;
 }
 
 .matches-grid {
@@ -841,23 +845,47 @@ onUnmounted(() => {
 }
 
 .action-btn.view {
-  background: #e3f2fd;
-  color: #2196F3;
+  background: rgba(33, 150, 243, 0.1);
+  color: var(--info-color);
+  border: 1px solid var(--info-color);
+}
+
+.action-btn.view:hover {
+  background: var(--info-color);
+  color: white;
 }
 
 .action-btn.start {
-  background: #e8f5e8;
-  color: #4CAF50;
+  background: rgba(139, 69, 19, 0.1);
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+}
+
+.action-btn.start:hover {
+  background: var(--primary-color);
+  color: white;
 }
 
 .action-btn.complete {
-  background: #e3f2fd;
-  color: #2196F3;
+  background: rgba(76, 175, 80, 0.1);
+  color: var(--success-color);
+  border: 1px solid var(--success-color);
+}
+
+.action-btn.complete:hover {
+  background: var(--success-color);
+  color: white;
 }
 
 .action-btn.close {
-  background: #ffebee;
-  color: #f44336;
+  background: rgba(244, 67, 54, 0.1);
+  color: var(--error-color);
+  border: 1px solid var(--error-color);
+}
+
+.action-btn.close:hover {
+  background: var(--error-color);
+  color: white;
 }
 
 .action-btn:hover {
@@ -872,7 +900,7 @@ onUnmounted(() => {
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
   color: white;
   padding: 25px;
   border-radius: 15px;

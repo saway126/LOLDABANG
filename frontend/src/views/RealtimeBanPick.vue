@@ -9,7 +9,7 @@
           <span v-else>새로고침</span>
         </button>
         <div class="connection-status" :class="wsConnected ? 'connected' : 'polling'">
-          {{ wsConnected ? '🟢 실시간 연결됨' : '🔄 폴링 모드' }}
+          {{ wsConnected ? '🟢 실시간 연결됨' : '🔄 폴링 모드 (30초마다 업데이트)' }}
         </div>
       </div>
     </div>
@@ -343,14 +343,36 @@ const handleWebSocketMessage = (data) => {
 const fetchActiveMatches = async () => {
   try {
     loading.value = true
-    const response = await fetch(`${API_BASE_URL}/matches/realtime`)
+    console.log('✅ 기존 API를 사용하여 내전 데이터 로드 중...')
     
-    if (response.ok) {
-      const data = await response.json()
-      activeMatches.value = data.matches.filter(match => 
-        match.status === 'open' || match.status === 'in_progress'
-      )
+    // 모든 타입의 내전을 가져오기
+    const allTypes = ['soft', 'hard', 'hyper']
+    let allMatches = []
+    
+    for (const type of allTypes) {
+      console.log(`📡 ${type} 타입 내전 데이터 로드 중...`)
+      try {
+        const typeResponse = await fetch(`${API_BASE_URL}/matches/by-type/${type}`)
+        if (typeResponse.ok) {
+          const typeMatches = await typeResponse.json()
+          allMatches = allMatches.concat(typeMatches)
+          console.log(`✅ ${type} 타입: ${typeMatches.length}개 내전 로드 완료`)
+        } else {
+          console.log(`❌ ${type} 타입 내전 로드 실패:`, typeResponse.status)
+        }
+      } catch (error) {
+        console.error(`❌ ${type} 타입 내전 로드 오류:`, error)
+      }
     }
+    
+    // 활성 내전만 필터링
+    activeMatches.value = allMatches.filter(match => 
+      match.status === 'open' || match.status === 'in_progress'
+    )
+    
+    console.log(`🎯 총 ${allMatches.length}개 내전 중 ${activeMatches.value.length}개 활성 내전 표시`)
+    console.log('📋 모든 내전 목록:', allMatches)
+    console.log('✅ 활성 내전 목록:', activeMatches.value)
   } catch (error) {
     console.error('활성 내전 조회 실패:', error)
   } finally {
@@ -594,7 +616,7 @@ watch(championSearch, searchChampions)
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
   min-height: 100vh;
 }
 
@@ -603,7 +625,7 @@ watch(championSearch, searchChampions)
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(139, 69, 19, 0.1);
   padding: 20px;
   border-radius: 15px;
   backdrop-filter: blur(10px);
@@ -656,8 +678,9 @@ watch(championSearch, searchChampions)
 }
 
 .connection-status.polling {
-  background: rgba(255, 152, 0, 0.2);
-  color: #FF9800;
+  background: rgba(139, 69, 19, 0.1);
+  color: var(--text-secondary);
+  border: 1px solid rgba(139, 69, 19, 0.2);
 }
 
 .active-matches, .banpick-interface {
@@ -677,13 +700,16 @@ watch(championSearch, searchChampions)
 
 .no-matches {
   text-align: center;
-  padding: 40px;
-  color: #666;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+  background: rgba(139, 69, 19, 0.03);
+  border-radius: 12px;
 }
 
 .no-matches-icon {
-  font-size: 3rem;
-  margin-bottom: 15px;
+  font-size: 2rem;
+  margin-bottom: 12px;
+  opacity: 0.6;
 }
 
 .matches-list {
@@ -739,18 +765,36 @@ watch(championSearch, searchChampions)
 }
 
 .action-btn.start {
-  background: #e8f5e8;
-  color: #4CAF50;
+  background: rgba(139, 69, 19, 0.1);
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+}
+
+.action-btn.start:hover {
+  background: var(--primary-color);
+  color: white;
 }
 
 .action-btn.end {
-  background: #fff3e0;
-  color: #FF9800;
+  background: rgba(255, 152, 0, 0.1);
+  color: var(--warning-color);
+  border: 1px solid var(--warning-color);
+}
+
+.action-btn.end:hover {
+  background: var(--warning-color);
+  color: white;
 }
 
 .action-btn.close {
-  background: #ffebee;
-  color: #f44336;
+  background: rgba(244, 67, 54, 0.1);
+  color: var(--error-color);
+  border: 1px solid var(--error-color);
+}
+
+.action-btn.close:hover {
+  background: var(--error-color);
+  color: white;
 }
 
 .action-btn:hover {
