@@ -43,8 +43,8 @@
       
       <!-- 실시간 상태 표시 -->
       <div class="realtime-status">
-        <div class="status-indicator" :class="wsConnected ? 'connected' : 'disconnected'">
-          {{ wsConnected ? '🟢 실시간 연결됨' : '🔴 연결 끊김' }}
+        <div class="status-indicator" :class="wsConnected ? 'connected' : 'polling'">
+          {{ wsConnected ? '🟢 실시간 연결됨' : '🔄 폴링 모드 (5초마다 업데이트)' }}
         </div>
         <div class="last-updated">
           마지막 업데이트: {{ lastUpdated }}
@@ -190,7 +190,7 @@ const completedToday = computed(() => {
   return 0
 })
 
-// WebSocket 연결
+// WebSocket 연결 (폴링 방식으로 대체)
 const connectWebSocket = () => {
   try {
     const WS_URL = import.meta.env.VITE_WS_URL || 'wss://loldabang-production.up.railway.app/ws'
@@ -218,21 +218,41 @@ const connectWebSocket = () => {
     ws.value.onclose = (event) => {
       wsConnected.value = false
       console.log('❌ WebSocket 연결 끊김:', event.code, event.reason)
-      // 5초 후 재연결 시도
-      setTimeout(() => {
-        console.log('🔄 WebSocket 재연결 시도...')
-        connectWebSocket()
-      }, 5000)
+      // WebSocket 연결 실패 시 폴링 방식으로 전환
+      console.log('🔄 폴링 방식으로 전환...')
+      startPolling()
     }
     
     ws.value.onerror = (error) => {
       console.error('❌ WebSocket 오류:', error)
       wsConnected.value = false
+      // WebSocket 오류 시 폴링 방식으로 전환
+      console.log('🔄 폴링 방식으로 전환...')
+      startPolling()
     }
   } catch (error) {
     console.error('❌ WebSocket 연결 실패:', error)
     wsConnected.value = false
+    // WebSocket 연결 실패 시 폴링 방식으로 전환
+    console.log('🔄 폴링 방식으로 전환...')
+    startPolling()
   }
+}
+
+// 폴링 방식으로 실시간 업데이트
+const startPolling = () => {
+  console.log('📡 폴링 방식으로 실시간 업데이트 시작')
+  wsConnected.value = false // 폴링 모드 표시
+  
+  // 5초마다 데이터 새로고침
+  const pollingInterval = setInterval(() => {
+    fetchRealtimeMatches()
+  }, 5000)
+  
+  // 컴포넌트 언마운트 시 폴링 중지
+  onUnmounted(() => {
+    clearInterval(pollingInterval)
+  })
 }
 
 const handleWebSocketMessage = (data) => {
@@ -579,6 +599,11 @@ onUnmounted(() => {
 .status-indicator.disconnected {
   background: rgba(244, 67, 54, 0.2);
   color: #f44336;
+}
+
+.status-indicator.polling {
+  background: rgba(255, 152, 0, 0.2);
+  color: #FF9800;
 }
 
 .realtime-header {

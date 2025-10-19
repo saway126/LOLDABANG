@@ -8,8 +8,8 @@
           <span v-if="loading">🔄</span>
           <span v-else>새로고침</span>
         </button>
-        <div class="connection-status" :class="wsConnected ? 'connected' : 'disconnected'">
-          {{ wsConnected ? '🟢 연결됨' : '🔴 연결 끊김' }}
+        <div class="connection-status" :class="wsConnected ? 'connected' : 'polling'">
+          {{ wsConnected ? '🟢 실시간 연결됨' : '🔄 폴링 모드' }}
         </div>
       </div>
     </div>
@@ -653,6 +653,11 @@ watch(championSearch, searchChampions)
 .connection-status.disconnected {
   background: rgba(244, 67, 54, 0.2);
   color: #f44336;
+}
+
+.connection-status.polling {
+  background: rgba(255, 152, 0, 0.2);
+  color: #FF9800;
 }
 
 .active-matches, .banpick-interface {
