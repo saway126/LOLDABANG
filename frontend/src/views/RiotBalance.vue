@@ -24,6 +24,7 @@ const error = ref<string | null>(null);
 const teamA = ref<PlayerOut[]>([]);
 const teamB = ref<PlayerOut[]>([]);
 const diff = ref<number | null>(null);
+const showScoreGuide = ref(false);
 
 async function runBalance() {
   try {
@@ -40,7 +41,135 @@ async function runBalance() {
 
 <template>
   <div class="p-6 space-y-6">
-    <h1 class="text-2xl font-bold">Riot 점수 기반 5v5 밸런싱</h1>
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Riot 점수 기반 5v5 밸런싱</h1>
+      <button @click="showScoreGuide = !showScoreGuide" class="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors">
+        {{ showScoreGuide ? '기준표 닫기' : '점수 기준표 보기' }}
+      </button>
+    </div>
+
+    <!-- 점수 기준표 -->
+    <div v-if="showScoreGuide" class="bg-white rounded-lg shadow-lg p-6 border-2 border-blue-200">
+      <h2 class="text-xl font-bold mb-4 text-center">📊 점수 계산 기준표</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 랭크 점수 (70%) -->
+        <div>
+          <h3 class="text-lg font-semibold mb-3 text-blue-600">🏆 랭크 점수 (70%)</h3>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <span class="font-medium">Iron</span>
+              <span class="text-gray-600">0점</span>
+            </div>
+            <div class="flex justify-between items-center p-2 bg-orange-100 rounded">
+              <span class="font-medium">Bronze</span>
+              <span class="text-orange-600">200점</span>
+            </div>
+            <div class="flex justify-between items-center p-2 bg-gray-100 rounded">
+              <span class="font-medium">Silver</span>
+              <span class="text-gray-600">400점</span>
+            </div>
+            <div class="flex justify-between items-center p-2 bg-yellow-100 rounded">
+              <span class="font-medium">Gold</span>
+              <span class="text-yellow-600">600점</span>
+            </div>
+            <div class="flex justify-between items-center p-2 bg-green-100 rounded">
+              <span class="font-medium">Platinum</span>
+              <span class="text-green-600">800점</span>
+            </div>
+            <div class="flex justify-between items-center p-2 bg-emerald-100 rounded">
+              <span class="font-medium">Emerald</span>
+              <span class="text-emerald-600">1000점</span>
+            </div>
+            <div class="flex justify-between items-center p-2 bg-blue-100 rounded">
+              <span class="font-medium">Diamond</span>
+              <span class="text-blue-600">1200점</span>
+            </div>
+            <div class="flex justify-between items-center p-2 bg-purple-100 rounded">
+              <span class="font-medium">Master</span>
+              <span class="text-purple-600">1500점</span>
+            </div>
+            <div class="flex justify-between items-center p-2 bg-pink-100 rounded">
+              <span class="font-medium">Grandmaster</span>
+              <span class="text-pink-600">1700점</span>
+            </div>
+            <div class="flex justify-between items-center p-2 bg-red-100 rounded">
+              <span class="font-medium">Challenger</span>
+              <span class="text-red-600">1900점</span>
+            </div>
+          </div>
+          
+          <div class="mt-4 p-3 bg-blue-50 rounded">
+            <h4 class="font-semibold text-sm mb-2">디비전 보너스</h4>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <div class="flex justify-between">
+                <span>IV</span>
+                <span>+0점</span>
+              </div>
+              <div class="flex justify-between">
+                <span>III</span>
+                <span>+50점</span>
+              </div>
+              <div class="flex justify-between">
+                <span>II</span>
+                <span>+100점</span>
+              </div>
+              <div class="flex justify-between">
+                <span>I</span>
+                <span>+150점</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-3 p-3 bg-green-50 rounded">
+            <h4 class="font-semibold text-sm mb-2">LP 보너스</h4>
+            <div class="text-sm space-y-1">
+              <div>• Iron~Diamond: 최대 100점</div>
+              <div>• Master~Challenger: 최대 300점</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 승률 보너스 (30%) -->
+        <div>
+          <h3 class="text-lg font-semibold mb-3 text-green-600">📈 승률 보너스 (30%)</h3>
+          <div class="space-y-3">
+            <div class="p-4 bg-green-50 rounded">
+              <h4 class="font-semibold text-sm mb-2">기준: 50% 승률</h4>
+              <div class="text-sm space-y-1">
+                <div>• 승률 10%p 차이당 40점 보너스</div>
+                <div>• 예: 60% 승률 = +40점</div>
+                <div>• 예: 40% 승률 = -40점</div>
+              </div>
+            </div>
+            
+            <div class="p-4 bg-blue-50 rounded">
+              <h4 class="font-semibold text-sm mb-2">최근 경기 수</h4>
+              <div class="text-sm space-y-1">
+                <div>• 기본: 8경기</div>
+                <div>• 최대: 20경기</div>
+                <div>• 경기 수가 적을수록 부정확할 수 있음</div>
+              </div>
+            </div>
+            
+            <div class="p-4 bg-yellow-50 rounded">
+              <h4 class="font-semibold text-sm mb-2">최종 점수 계산</h4>
+              <div class="text-sm space-y-1">
+                <div>• 랭크 점수 × 0.7</div>
+                <div>• 승률 보너스 × 0.3</div>
+                <div>• 두 값을 합산하여 최종 점수</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-6 p-4 bg-gray-100 rounded text-center">
+        <p class="text-sm text-gray-600">
+          💡 <strong>팁:</strong> 팀 점수 차이가 낮을수록 더 균형잡힌 팀 구성입니다!
+        </p>
+      </div>
+    </div>
 
     <div class="flex items-center gap-4">
       <label class="font-medium">최근 경기 수</label>
