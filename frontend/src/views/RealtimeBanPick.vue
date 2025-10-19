@@ -27,15 +27,40 @@
           :key="match.id"
           class="match-item"
           :class="{ active: selectedMatch?.id === match.id }"
-          @click="selectMatch(match)"
         >
-          <div class="match-info">
-            <div class="match-id">{{ match.customId }}</div>
-            <div class="match-host">{{ match.host }}</div>
-            <div class="match-type">{{ getTypeText(match.type) }}</div>
+          <div class="match-content" @click="selectMatch(match)">
+            <div class="match-info">
+              <div class="match-id">{{ match.customId }}</div>
+              <div class="match-host">{{ match.host }}</div>
+              <div class="match-type">{{ getTypeText(match.type) }}</div>
+            </div>
+            <div class="match-status" :class="match.status">
+              {{ getStatusText(match.status) }}
+            </div>
           </div>
-          <div class="match-status" :class="match.status">
-            {{ getStatusText(match.status) }}
+          
+          <div class="match-actions" @click.stop>
+            <button 
+              v-if="match.status === 'open'" 
+              @click="updateMatchStatus(match.id, 'in_progress')" 
+              class="action-btn start"
+            >
+              ▶️ 시작
+            </button>
+            <button 
+              v-if="match.status === 'in_progress'" 
+              @click="updateMatchStatus(match.id, 'completed')" 
+              class="action-btn end"
+            >
+              🏁 종료
+            </button>
+            <button 
+              v-if="match.status === 'open'" 
+              @click="updateMatchStatus(match.id, 'closed')" 
+              class="action-btn close"
+            >
+              ❌ 취소
+            </button>
           </div>
         </div>
       </div>
@@ -241,45 +266,77 @@ const isChampionPicked = (championId) => {
 // 메서드
 const connectWebSocket = () => {
   try {
+    console.log('🔌 WebSocket 연결 시도:', WS_URL)
     ws.value = new WebSocket(WS_URL)
     
     ws.value.onopen = () => {
       wsConnected.value = true
-      console.log('WebSocket 연결됨')
+      console.log('✅ WebSocket 연결됨')
+      // 연결 성공 시 ping 전송
+      ws.value.send(JSON.stringify({ type: 'ping' }))
     }
     
     ws.value.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      handleWebSocketMessage(data)
+      try {
+        const data = JSON.parse(event.data)
+        console.log('📨 WebSocket 메시지 수신:', data)
+        handleWebSocketMessage(data)
+      } catch (error) {
+        console.error('❌ WebSocket 메시지 파싱 오류:', error)
+      }
     }
     
-    ws.value.onclose = () => {
+    ws.value.onclose = (event) => {
       wsConnected.value = false
-      console.log('WebSocket 연결 끊김')
-      // 3초 후 재연결 시도
-      setTimeout(connectWebSocket, 3000)
+      console.log('❌ WebSocket 연결 끊김:', event.code, event.reason)
+      // 5초 후 재연결 시도
+      setTimeout(() => {
+        console.log('🔄 WebSocket 재연결 시도...')
+        connectWebSocket()
+      }, 5000)
     }
     
     ws.value.onerror = (error) => {
-      console.error('WebSocket 오류:', error)
+      console.error('❌ WebSocket 오류:', error)
       wsConnected.value = false
     }
   } catch (error) {
-    console.error('WebSocket 연결 실패:', error)
+    console.error('❌ WebSocket 연결 실패:', error)
+    wsConnected.value = false
   }
 }
 
 const handleWebSocketMessage = (data) => {
+  console.log('📨 WebSocket 메시지 처리:', data.type)
+  
   switch (data.type) {
+    case 'pong':
+      console.log('🏓 WebSocket pong 수신')
+      break
     case 'match_status_update':
+      console.log('🔄 내전 상태 업데이트 수신')
+      refreshData()
+      break
+    case 'match_started':
+      console.log('▶️ 내전 시작 알림:', data.matchId)
+      showNotification(`내전 ${data.matchId}이 시작되었습니다!`, 'success')
+      refreshData()
+      break
+    case 'match_ended':
+      console.log('🏁 내전 종료 알림:', data.matchId)
+      showNotification(`내전 ${data.matchId}이 종료되었습니다.`, 'info')
       refreshData()
       break
     case 'banpick_update':
+      console.log('🎮 밴픽 업데이트 수신')
       updateBanPickState(data)
       break
     case 'admin_notification':
-      showNotification(data.message)
+      console.log('📢 관리자 알림 수신')
+      showNotification(data.message, 'warning')
       break
+    default:
+      console.log('❓ 알 수 없는 메시지 타입:', data.type)
   }
 }
 
@@ -420,6 +477,42 @@ const refreshData = () => {
   fetchActiveMatches()
 }
 
+const updateMatchStatus = async (matchId, newStatus) => {
+  try {
+    console.log(`🔄 내전 ${matchId} 상태를 ${newStatus}로 변경 중...`)
+    
+    const response = await fetch(`${API_BASE_URL}/matches/${matchId}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: newStatus })
+    })
+
+    if (response.ok) {
+      const statusText = getStatusText(newStatus)
+      showNotification(`내전 상태가 ${statusText}로 변경되었습니다.`, 'success')
+      
+      // WebSocket으로 다른 클라이언트에게 알림
+      if (ws.value && wsConnected.value) {
+        ws.value.send(JSON.stringify({
+          type: 'match_status_update',
+          matchId: matchId,
+          status: newStatus
+        }))
+      }
+      
+      // 데이터 새로고침
+      await fetchActiveMatches()
+    } else {
+      throw new Error('상태 업데이트 실패')
+    }
+  } catch (error) {
+    console.error('내전 상태 업데이트 실패:', error)
+    showNotification('내전 상태 업데이트에 실패했습니다.', 'error')
+  }
+}
+
 const getStatusText = (status) => {
   const statusMap = {
     'open': '모집중',
@@ -443,9 +536,40 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleString('ko-KR')
 }
 
-const showNotification = (message) => {
-  // 간단한 알림 표시
-  alert(message)
+const showNotification = (message, type = 'info') => {
+  // 브라우저 알림 API 사용
+  if ('Notification' in window) {
+    if (Notification.permission === 'granted') {
+      new Notification('롤다방 알림', {
+        body: message,
+        icon: '/favicon.ico'
+      })
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification('롤다방 알림', {
+            body: message,
+            icon: '/favicon.ico'
+          })
+        }
+      })
+    }
+  }
+  
+  // 콘솔에도 로그 출력
+  const timestamp = new Date().toLocaleTimeString('ko-KR')
+  console.log(`[${timestamp}] ${type.toUpperCase()}: ${message}`)
+  
+  // 간단한 토스트 알림 (선택사항)
+  if (type === 'success') {
+    console.log('✅', message)
+  } else if (type === 'error') {
+    console.error('❌', message)
+  } else if (type === 'warning') {
+    console.warn('⚠️', message)
+  } else {
+    console.log('ℹ️', message)
+  }
 }
 
 // 라이프사이클
@@ -567,9 +691,11 @@ watch(championSearch, searchChampions)
   background: white;
   border-radius: 10px;
   padding: 15px;
-  cursor: pointer;
   transition: all 0.3s ease;
   border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .match-item:hover {
@@ -580,6 +706,51 @@ watch(championSearch, searchChampions)
 .match-item.active {
   border-color: #667eea;
   background: #f0f4ff;
+}
+
+.match-content {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.match-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  min-width: 70px;
+}
+
+.action-btn.start {
+  background: #e8f5e8;
+  color: #4CAF50;
+}
+
+.action-btn.end {
+  background: #fff3e0;
+  color: #FF9800;
+}
+
+.action-btn.close {
+  background: #ffebee;
+  color: #f44336;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .match-info {

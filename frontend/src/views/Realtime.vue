@@ -1,5 +1,28 @@
 <template>
   <div class="realtime-container">
+    <!-- 실시간 알림 표시 -->
+    <div v-if="notifications.length > 0" class="notifications-container">
+      <div 
+        v-for="notification in notifications" 
+        :key="notification.id"
+        class="notification"
+        :class="notification.type"
+        @click="removeNotification(notification.id)"
+      >
+        <div class="notification-icon">
+          {{ getNotificationIcon(notification.type) }}
+        </div>
+        <div class="notification-content">
+          <div class="notification-title">{{ notification.title }}</div>
+          <div class="notification-message">{{ notification.message }}</div>
+          <div class="notification-time">{{ formatTime(notification.timestamp) }}</div>
+        </div>
+        <button class="notification-close" @click.stop="removeNotification(notification.id)">
+          ×
+        </button>
+      </div>
+    </div>
+
     <!-- 헤더 -->
     <div class="realtime-header">
       <h1>🎮 실시간 내전 관리</h1>
@@ -17,6 +40,16 @@
     <!-- 실시간 내전 목록 -->
     <div class="matches-section">
       <h2>🔥 활성 내전 ({{ realtimeMatches.length }}개)</h2>
+      
+      <!-- 실시간 상태 표시 -->
+      <div class="realtime-status">
+        <div class="status-indicator" :class="wsConnected ? 'connected' : 'disconnected'">
+          {{ wsConnected ? '🟢 실시간 연결됨' : '🔴 연결 끊김' }}
+        </div>
+        <div class="last-updated">
+          마지막 업데이트: {{ lastUpdated }}
+        </div>
+      </div>
       
       <div v-if="loading" class="loading">
         <div class="spinner"></div>
@@ -139,6 +172,9 @@ const realtimeMatches = ref([])
 const loading = ref(false)
 const lastUpdated = ref('')
 const refreshInterval = ref(null)
+const wsConnected = ref(false)
+const ws = ref(null)
+const notifications = ref([])
 
 // 계산된 속성
 const totalParticipants = computed(() => {
@@ -153,6 +189,113 @@ const completedToday = computed(() => {
   // 실제로는 백엔드에서 오늘 완료된 내전 수를 가져와야 함
   return 0
 })
+
+// WebSocket 연결
+const connectWebSocket = () => {
+  try {
+    const WS_URL = import.meta.env.VITE_WS_URL || 'wss://loldabang-production.up.railway.app/ws'
+    console.log('🔌 WebSocket 연결 시도:', WS_URL)
+    
+    ws.value = new WebSocket(WS_URL)
+    
+    ws.value.onopen = () => {
+      wsConnected.value = true
+      console.log('✅ WebSocket 연결됨')
+      // 연결 성공 시 ping 전송
+      ws.value.send(JSON.stringify({ type: 'ping' }))
+    }
+    
+    ws.value.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        console.log('📨 WebSocket 메시지 수신:', data)
+        handleWebSocketMessage(data)
+      } catch (error) {
+        console.error('❌ WebSocket 메시지 파싱 오류:', error)
+      }
+    }
+    
+    ws.value.onclose = (event) => {
+      wsConnected.value = false
+      console.log('❌ WebSocket 연결 끊김:', event.code, event.reason)
+      // 5초 후 재연결 시도
+      setTimeout(() => {
+        console.log('🔄 WebSocket 재연결 시도...')
+        connectWebSocket()
+      }, 5000)
+    }
+    
+    ws.value.onerror = (error) => {
+      console.error('❌ WebSocket 오류:', error)
+      wsConnected.value = false
+    }
+  } catch (error) {
+    console.error('❌ WebSocket 연결 실패:', error)
+    wsConnected.value = false
+  }
+}
+
+const handleWebSocketMessage = (data) => {
+  console.log('📨 WebSocket 메시지 처리:', data.type)
+  
+  switch (data.type) {
+    case 'pong':
+      console.log('🏓 WebSocket pong 수신')
+      break
+    case 'match_status_update':
+      console.log('🔄 내전 상태 업데이트 수신')
+      fetchRealtimeMatches()
+      break
+    case 'match_started':
+      console.log('▶️ 내전 시작 알림:', data.matchId)
+      addNotification('success', '내전 시작', `내전 ${data.matchId}이 시작되었습니다!`)
+      fetchRealtimeMatches()
+      break
+    case 'match_ended':
+      console.log('🏁 내전 종료 알림:', data.matchId)
+      addNotification('info', '내전 종료', `내전 ${data.matchId}이 종료되었습니다.`)
+      fetchRealtimeMatches()
+      break
+    case 'admin_notification':
+      console.log('📢 관리자 알림 수신')
+      addNotification('warning', '관리자 알림', data.message)
+      break
+    default:
+      console.log('❓ 알 수 없는 메시지 타입:', data.type)
+  }
+}
+
+const addNotification = (type, title, message) => {
+  const notification = {
+    id: Date.now() + Math.random(),
+    type,
+    title,
+    message,
+    timestamp: new Date()
+  }
+  
+  notifications.value.unshift(notification)
+  
+  // 5초 후 자동 제거
+  setTimeout(() => {
+    removeNotification(notification.id)
+  }, 5000)
+  
+  // 브라우저 알림
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, {
+      body: message,
+      icon: '/favicon.ico'
+    })
+  }
+}
+
+const removeNotification = (id) => {
+  const index = notifications.value.findIndex(n => n.id === id)
+  if (index > -1) {
+    notifications.value.splice(index, 1)
+  }
+}
 
 // 메서드
 const fetchRealtimeMatches = async () => {
@@ -283,8 +426,24 @@ const formatTime = (timeString) => {
   })
 }
 
+const getNotificationIcon = (type) => {
+  const icons = {
+    success: '✅',
+    info: 'ℹ️',
+    warning: '⚠️',
+    error: '❌'
+  }
+  return icons[type] || '📢'
+}
+
 // 라이프사이클
 onMounted(() => {
+  // 알림 권한 요청
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission()
+  }
+  
+  connectWebSocket()
   fetchRealtimeMatches()
   
   // 30초마다 자동 새로고침
@@ -294,6 +453,9 @@ onMounted(() => {
 onUnmounted(() => {
   if (refreshInterval.value) {
     clearInterval(refreshInterval.value)
+  }
+  if (ws.value) {
+    ws.value.close()
   }
 })
 </script>
@@ -305,6 +467,118 @@ onUnmounted(() => {
   padding: 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
+  position: relative;
+}
+
+.notifications-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  max-width: 400px;
+}
+
+.notification {
+  display: flex;
+  align-items: flex-start;
+  background: white;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-left: 4px solid #ddd;
+}
+
+.notification:hover {
+  transform: translateX(-5px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.notification.success {
+  border-left-color: #4CAF50;
+}
+
+.notification.info {
+  border-left-color: #2196F3;
+}
+
+.notification.warning {
+  border-left-color: #FF9800;
+}
+
+.notification.error {
+  border-left-color: #f44336;
+}
+
+.notification-icon {
+  font-size: 1.5rem;
+  margin-right: 10px;
+  margin-top: 2px;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-title {
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.notification-message {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+
+.notification-time {
+  color: #999;
+  font-size: 0.8rem;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.realtime-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 10px 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.status-indicator {
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.status-indicator.connected {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+.status-indicator.disconnected {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
 }
 
 .realtime-header {
