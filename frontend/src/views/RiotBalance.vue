@@ -37,6 +37,26 @@ async function runBalance() {
     loading.value = false;
   }
 }
+
+const getAverageScore = (team: PlayerOut[]): number => {
+  if (!team.length) return 0
+  return team.reduce((sum, p) => sum + p.score, 0) / team.length
+}
+
+const getAverageTier = (team: PlayerOut[]): string => {
+  const tierValues = { IRON: 1, BRONZE: 2, SILVER: 3, GOLD: 4, PLATINUM: 5, 
+                       EMERALD: 6, DIAMOND: 7, MASTER: 8, GRANDMASTER: 9, CHALLENGER: 10 }
+  const avg = team.reduce((sum, p) => sum + (tierValues[p.tier as keyof typeof tierValues] || 0), 0) / team.length
+  const tiers = Object.entries(tierValues).sort((a, b) => a[1] - b[1])
+  return tiers.find(([_, v]) => v >= avg)?.[0] || 'UNRANKED'
+}
+
+const getAverageWinrate = (team: PlayerOut[]): string => {
+  const withWR = team.filter(p => p.winrate != null)
+  if (!withWR.length) return '데이터 없음'
+  const avg = withWR.reduce((sum, p) => sum + p.winrate!, 0) / withWR.length
+  return (avg * 100).toFixed(0) + '%'
+}
 </script>
 
 <template>
@@ -192,6 +212,23 @@ async function runBalance() {
       <div v-if="error" class="text-red-600">에러: {{ error }}</div>
       <div v-else class="space-y-3">
         <div v-if="diff !== null" class="text-sm">팀 점수 차이(낮을수록 균형): <b>{{ diff?.toFixed(1) }}</b></div>
+
+        <!-- 팀 통계 요약 -->
+        <div class="team-stats-summary" v-if="teamA.length || teamB.length">
+          <div class="stat-card">
+            <h5>팀 A 통계</h5>
+            <p>평균 점수: {{ getAverageScore(teamA).toFixed(1) }}</p>
+            <p>평균 티어: {{ getAverageTier(teamA) }}</p>
+            <p>평균 승률: {{ getAverageWinrate(teamA) }}</p>
+          </div>
+          <div class="stat-card">
+            <h5>팀 B 통계</h5>
+            <p>평균 점수: {{ getAverageScore(teamB).toFixed(1) }}</p>
+            <p>평균 티어: {{ getAverageTier(teamB) }}</p>
+            <p>평균 승률: {{ getAverageWinrate(teamB) }}</p>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" v-if="teamA.length || teamB.length">
           <div>
             <h3 class="font-semibold">팀 A</h3>
@@ -216,3 +253,38 @@ async function runBalance() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.team-stats-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.stat-card {
+  padding: 1rem;
+  background: rgba(139, 69, 19, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(139, 69, 19, 0.2);
+}
+
+.stat-card h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--primary-color, #8b4513);
+}
+
+.stat-card p {
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .team-stats-summary {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

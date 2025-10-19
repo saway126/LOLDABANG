@@ -107,13 +107,53 @@
       </div>
       
       <div v-if="balanceResult" class="balance-result">
+        <!-- 점수 기준표 모달 -->
+        <div v-if="showScoreGuide" class="score-guide-modal" @click="showScoreGuide = false">
+          <div class="score-guide-content" @click.stop>
+            <h4>📊 티어별 점수 기준</h4>
+            <table class="score-table">
+              <tr><td>Challenger</td><td>10점</td></tr>
+              <tr><td>Grandmaster</td><td>9점</td></tr>
+              <tr><td>Master</td><td>8점</td></tr>
+              <tr><td>Diamond</td><td>7점</td></tr>
+              <tr><td>Platinum</td><td>6점</td></tr>
+              <tr><td>Gold</td><td>5점</td></tr>
+              <tr><td>Silver</td><td>4점</td></tr>
+              <tr><td>Bronze</td><td>3점</td></tr>
+              <tr><td>Iron</td><td>2점</td></tr>
+              <tr><td>Unranked</td><td>1점</td></tr>
+            </table>
+            <p class="guide-note">* 팀 점수 = 각 플레이어 점수의 합</p>
+            <p class="guide-note">* 품질 점수 = 1 - |팀1점수 - 팀2점수| / 총점</p>
+            <button @click="showScoreGuide = false" class="close-btn">닫기</button>
+          </div>
+        </div>
+
         <div class="result-header">
           <h3 class="result-title">🎯 밸런싱 결과</h3>
+          <button @click="showScoreGuide = !showScoreGuide" class="score-guide-btn">
+            📊 점수 기준표
+          </button>
           <div class="quality-score">
             <span class="quality-label">품질 점수</span>
             <span :class="['quality-value', getQualityClass(balanceResult.qualityScore)]">
               {{ (balanceResult.qualityScore * 100).toFixed(1) }}%
             </span>
+          </div>
+        </div>
+
+        <!-- 팀 비교 차트 -->
+        <div class="team-comparison">
+          <div class="comparison-bar">
+            <div class="team1-bar" :style="{ width: getTeamPercentage(0) + '%' }">
+              팀 1: {{ balanceResult.teams[0].totalScore.toFixed(1) }}점
+            </div>
+            <div class="team2-bar" :style="{ width: getTeamPercentage(1) + '%' }">
+              팀 2: {{ balanceResult.teams[1].totalScore.toFixed(1) }}점
+            </div>
+          </div>
+          <div class="comparison-diff">
+            점수 차이: {{ Math.abs(balanceResult.teams[0].totalScore - balanceResult.teams[1].totalScore).toFixed(1) }}점
           </div>
         </div>
         
@@ -139,7 +179,10 @@
                   <span v-else class="captain-select">선택</span>
                 </div>
                 <div class="player-info">
-                  <div class="player-name">{{ player.name }}</div>
+                  <div class="player-name-row">
+                    <div class="player-name">{{ player.name }}</div>
+                    <div class="player-score">{{ getPlayerScore(player) }}점</div>
+                  </div>
                   <div class="player-details">
                     <span :class="['tier-badge', getTierClass(player.tier)]">
                       {{ player.tier || 'UNRANKED' }}{{ player.rank || '' }}
@@ -200,7 +243,8 @@ const selectedParticipantIds = ref<number[]>([])
 const loading = ref(false)
 const balanceResult = ref<BalanceResult | null>(null)
 const teamCaptains = ref<Record<string, number>>({})
-const notificationComponent = ref(null)
+const notificationComponent = ref<any>(null)
+const showScoreGuide = ref(false)
 
 // 환경에 따라 API URL 설정
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://loldabang-production.up.railway.app/api'
@@ -236,7 +280,7 @@ const fetchMatches = async () => {
   }
 }
 
-const showNotification = (message, type = 'info') => {
+const showNotification = (message: string, type: string = 'info') => {
   if (notificationComponent.value) {
     notificationComponent.value.addNotification({
       type,
@@ -247,8 +291,8 @@ const showNotification = (message, type = 'info') => {
   }
 }
 
-const getNotificationTitle = (type) => {
-  const titles = {
+const getNotificationTitle = (type: string) => {
+  const titles: Record<string, string> = {
     'success': '성공',
     'error': '오류',
     'warning': '경고',
@@ -258,7 +302,7 @@ const getNotificationTitle = (type) => {
 }
 
 // 라이엇 API 연동 함수들
-const fetchRiotData = async (player) => {
+const fetchRiotData = async (player: Player) => {
   try {
     // 라이엇 ID 파싱 (예: "무무와벡스#kr1" -> "무무와벡스", "kr1")
     const [gameName, tagLine] = player.name.split('#')
@@ -321,14 +365,14 @@ const fetchRiotData = async (player) => {
     
     return updatedPlayer
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('라이엇 API 호출 실패:', error)
     showNotification(`라이엇 API 호출 실패: ${error.message}`, 'error')
     return player
   }
 }
 
-const loadRiotData = async (player) => {
+const loadRiotData = async (player: Player) => {
   // 로컬 스토리지에서 캐시된 데이터 확인
   const savedPlayers = JSON.parse(localStorage.getItem('riotPlayers') || '{}')
   const cachedPlayer = savedPlayers[player.name]
@@ -336,7 +380,7 @@ const loadRiotData = async (player) => {
   if (cachedPlayer && cachedPlayer.lastUpdated) {
     const lastUpdated = new Date(cachedPlayer.lastUpdated)
     const now = new Date()
-    const hoursDiff = (now - lastUpdated) / (1000 * 60 * 60)
+    const hoursDiff = (now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60)
     
     // 1시간 이내의 데이터면 캐시 사용
     if (hoursDiff < 1) {
@@ -503,6 +547,21 @@ const getQualityClass = (score: number): string => {
   if (score >= 0.8) return 'quality-good'
   if (score >= 0.6) return 'quality-medium'
   return 'quality-poor'
+}
+
+const getPlayerScore = (player: Player): number => {
+  const tierScores: Record<string, number> = {
+    'CHALLENGER': 10, 'GRANDMASTER': 9, 'MASTER': 8,
+    'DIAMOND': 7, 'PLATINUM': 6, 'GOLD': 5,
+    'SILVER': 4, 'BRONZE': 3, 'IRON': 2, 'UNRANKED': 1
+  }
+  return tierScores[player.tier] || 1
+}
+
+const getTeamPercentage = (teamIndex: number): number => {
+  if (!balanceResult.value) return 50
+  const totalScore = balanceResult.value.teams[0].totalScore + balanceResult.value.teams[1].totalScore
+  return (balanceResult.value.teams[teamIndex].totalScore / totalScore) * 100
 }
 
 onMounted(() => {
@@ -1027,5 +1086,155 @@ onMounted(() => {
   .form-container {
     padding: 1.5rem;
   }
+}
+
+/* 개별 플레이어 점수 스타일 */
+.player-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.player-score {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  background: rgba(139, 69, 19, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+/* 점수 기준표 버튼 */
+.score-guide-btn {
+  padding: 0.5rem 1rem;
+  background: rgba(139, 69, 19, 0.1);
+  border: 1px solid var(--primary-color);
+  border-radius: 8px;
+  color: var(--primary-color);
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 0.875rem;
+  margin-left: 1rem;
+}
+
+.score-guide-btn:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* 점수 기준표 모달 */
+.score-guide-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.score-guide-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.score-guide-content h4 {
+  margin: 0 0 1rem 0;
+  color: var(--primary-color);
+  font-size: 1.25rem;
+}
+
+.score-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.score-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.score-table td:first-child {
+  font-weight: 600;
+}
+
+.score-table td:last-child {
+  text-align: right;
+  color: var(--primary-color);
+}
+
+.guide-note {
+  font-size: 0.875rem;
+  color: #666;
+  margin: 0.5rem 0;
+}
+
+.close-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.close-btn:hover {
+  background: #8b4513;
+}
+
+/* 팀 비교 차트 */
+.team-comparison {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: rgba(139, 69, 19, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(139, 69, 19, 0.1);
+}
+
+.comparison-bar {
+  display: flex;
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.team1-bar, .team2-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  min-width: 0;
+}
+
+.team1-bar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.team2-bar {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.comparison-diff {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #666;
+  font-weight: 600;
 }
 </style>

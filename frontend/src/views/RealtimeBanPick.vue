@@ -16,68 +16,19 @@
       </div>
     </div>
 
-    <!-- 활성 내전 목록 -->
-    <div class="active-matches">
-      <h2>🔥 활성 내전</h2>
-      <div v-if="activeMatches.length === 0" class="no-matches">
-        <div class="no-matches-icon">😴</div>
-        <p>현재 활성 내전이 없습니다</p>
-      </div>
-      <div v-else class="matches-list">
-        <div 
-          v-for="match in activeMatches" 
-          :key="match.id"
-          class="match-item"
-          :class="{ active: selectedMatch?.id === match.id }"
-        >
-          <div class="match-content" @click="selectMatch(match)">
-            <div class="match-info">
-              <div class="match-id">{{ match.customId }}</div>
-              <div class="match-host">{{ match.host }}</div>
-              <div class="match-type">{{ getTypeText(match.type) }}</div>
-            </div>
-            <div class="match-status" :class="match.status">
-              {{ getStatusText(match.status) }}
-            </div>
-          </div>
-          
-          <div class="match-actions" @click.stop>
-            <button 
-              v-if="match.status === 'open'" 
-              @click="updateMatchStatus(match.customId, 'in_progress')" 
-              class="action-btn start"
-            >
-              ▶️ 시작
-            </button>
-            <button 
-              v-if="match.status === 'in_progress'" 
-              @click="updateMatchStatus(match.customId, 'completed')" 
-              class="action-btn end"
-            >
-              🏁 종료
-            </button>
-            <button 
-              v-if="match.status === 'open'" 
-              @click="updateMatchStatus(match.customId, 'closed')" 
-              class="action-btn close"
-            >
-              ❌ 취소
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 밴픽 인터페이스 -->
-    <div v-if="selectedMatch" class="banpick-interface">
+    <div class="banpick-interface">
       <div class="match-header">
-        <h3>{{ selectedMatch.customId }} - {{ selectedMatch.host }}</h3>
+        <h3>🎮 밴픽 관리</h3>
         <div class="match-controls">
           <button @click="startBanPick" :disabled="banPickPhase !== 'waiting'" class="start-btn">
             밴픽 시작
           </button>
           <button @click="resetBanPick" class="reset-btn">
             리셋
+          </button>
+          <button @click="saveBanPick" :disabled="banPickPhase === 'waiting'" class="save-btn">
+            💾 저장
           </button>
         </div>
       </div>
@@ -189,7 +140,7 @@
             class="history-item"
           >
             <div class="game-info">
-              <div class="game-date">{{ formatDate(game.date) }}</div>
+              <div class="game-date">{{ game.date }}</div>
               <div class="game-winner">{{ game.winner }} 승리</div>
             </div>
             <div class="game-champions">
@@ -234,11 +185,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://loldabang-producti
 const WS_URL = import.meta.env.VITE_WS_URL || 'wss://loldabang-production.up.railway.app/ws'
 
 // 반응형 데이터
-const activeMatches = ref([])
-const selectedMatch = ref(null)
 const loading = ref(false)
 const wsConnected = ref(false)
-const ws = ref(null)
 const notificationComponent = ref(null)
 
 // 밴픽 관련
@@ -268,137 +216,6 @@ const isChampionPicked = (championId) => {
 }
 
 // 메서드
-const connectWebSocket = () => {
-  try {
-    console.log('🔌 WebSocket 연결 시도:', WS_URL)
-    ws.value = new WebSocket(WS_URL)
-    
-    // 연결 타임아웃 설정 (10초)
-    const connectionTimeout = setTimeout(() => {
-      if (ws.value && ws.value.readyState === WebSocket.CONNECTING) {
-        console.log('⏰ WebSocket 연결 타임아웃')
-        ws.value.close()
-        wsConnected.value = false
-        startPolling()
-      }
-    }, 10000)
-    
-    ws.value.onopen = () => {
-      clearTimeout(connectionTimeout)
-      wsConnected.value = true
-      console.log('✅ WebSocket 연결됨')
-      // 연결 성공 시 ping 전송
-      try {
-        ws.value.send(JSON.stringify({ type: 'ping' }))
-      } catch (error) {
-        console.error('❌ WebSocket ping 전송 실패:', error)
-      }
-    }
-    
-    ws.value.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        console.log('📨 WebSocket 메시지 수신:', data)
-        handleWebSocketMessage(data)
-      } catch (error) {
-        console.error('❌ WebSocket 메시지 파싱 오류:', error)
-      }
-    }
-    
-    ws.value.onclose = (event) => {
-      wsConnected.value = false
-      console.log('❌ WebSocket 연결 끊김:', event.code, event.reason)
-      // 5초 후 재연결 시도
-      setTimeout(() => {
-        console.log('🔄 WebSocket 재연결 시도...')
-        connectWebSocket()
-      }, 5000)
-    }
-    
-    ws.value.onerror = (error) => {
-      console.error('❌ WebSocket 오류:', error)
-      wsConnected.value = false
-    }
-  } catch (error) {
-    console.error('❌ WebSocket 연결 실패:', error)
-    wsConnected.value = false
-  }
-}
-
-const handleWebSocketMessage = (data) => {
-  console.log('📨 WebSocket 메시지 처리:', data.type)
-  
-  switch (data.type) {
-    case 'pong':
-      console.log('🏓 WebSocket pong 수신')
-      break
-    case 'match_status_update':
-      console.log('🔄 내전 상태 업데이트 수신')
-      refreshData()
-      break
-    case 'match_started':
-      console.log('▶️ 내전 시작 알림:', data.matchId)
-      showNotification(`내전 ${data.matchId}이 시작되었습니다!`, 'success')
-      refreshData()
-      break
-    case 'match_ended':
-      console.log('🏁 내전 종료 알림:', data.matchId)
-      showNotification(`내전 ${data.matchId}이 종료되었습니다.`, 'info')
-      refreshData()
-      break
-    case 'banpick_update':
-      console.log('🎮 밴픽 업데이트 수신')
-      updateBanPickState(data)
-      break
-    case 'admin_notification':
-      console.log('📢 관리자 알림 수신')
-      showNotification(data.message, 'warning')
-      break
-    default:
-      console.log('❓ 알 수 없는 메시지 타입:', data.type)
-  }
-}
-
-const fetchActiveMatches = async () => {
-  try {
-    loading.value = true
-    console.log('✅ 기존 API를 사용하여 내전 데이터 로드 중...')
-    
-    // 모든 타입의 내전을 가져오기
-    const allTypes = ['soft', 'hard', 'hyper']
-    let allMatches = []
-    
-    for (const type of allTypes) {
-      console.log(`📡 ${type} 타입 내전 데이터 로드 중...`)
-      try {
-        const typeResponse = await fetch(`${API_BASE_URL}/matches/by-type/${type}`)
-        if (typeResponse.ok) {
-          const typeMatches = await typeResponse.json()
-          allMatches = allMatches.concat(typeMatches)
-          console.log(`✅ ${type} 타입: ${typeMatches.length}개 내전 로드 완료`)
-        } else {
-          console.log(`❌ ${type} 타입 내전 로드 실패:`, typeResponse.status)
-        }
-      } catch (error) {
-        console.error(`❌ ${type} 타입 내전 로드 오류:`, error)
-      }
-    }
-    
-    // 활성 내전만 필터링
-    activeMatches.value = allMatches.filter(match => 
-      match.status === 'open' || match.status === 'in_progress'
-    )
-    
-    console.log(`🎯 총 ${allMatches.length}개 내전 중 ${activeMatches.value.length}개 활성 내전 표시`)
-    console.log('📋 모든 내전 목록:', allMatches)
-    console.log('✅ 활성 내전 목록:', activeMatches.value)
-  } catch (error) {
-    console.error('활성 내전 조회 실패:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
 const fetchChampions = async () => {
   try {
     const response = await fetch('https://ddragon.leagueoflegends.com/cdn/13.24.1/data/ko_KR/champion.json')
@@ -416,14 +233,14 @@ const fetchChampions = async () => {
   }
 }
 
-const fetchGameHistory = async (matchId) => {
+const fetchGameHistory = async () => {
   try {
     // 실제로는 백엔드에서 게임 기록을 가져와야 함
     // 임시 데이터
     gameHistory.value = [
       {
         id: 1,
-        date: new Date().toISOString(),
+        date: new Date().toLocaleDateString('ko-KR'),
         winner: '블루팀',
         blueTeam: ['아리', '리 신', '아지르', '진', '쓰레쉬'],
         redTeam: ['야스오', '그레이브즈', '빅토르', '케이틀린', '레오나']
@@ -432,20 +249,6 @@ const fetchGameHistory = async (matchId) => {
   } catch (error) {
     console.error('게임 기록 조회 실패:', error)
   }
-}
-
-const selectMatch = (match) => {
-  selectedMatch.value = match
-  // 팀 구성 (임시 데이터)
-  blueTeam.value = [
-    { id: 1, name: 'Player1', tier: 'Gold' },
-    { id: 2, name: 'Player2', tier: 'Platinum' }
-  ]
-  redTeam.value = [
-    { id: 3, name: 'Player3', tier: 'Silver' },
-    { id: 4, name: 'Player4', tier: 'Diamond' }
-  ]
-  fetchGameHistory(match.id)
 }
 
 const searchChampions = () => {
@@ -514,69 +317,48 @@ const resetBanPick = () => {
   redTeamPicks.value = []
 }
 
-const refreshData = () => {
-  fetchActiveMatches()
-}
-
-const updateMatchStatus = async (matchId, newStatus) => {
+const saveBanPick = async () => {
   try {
-    console.log(`🔄 내전 ${matchId} 상태를 ${newStatus}로 변경 중...`)
-    console.log(`📊 matchId 타입: ${typeof matchId}, 값: ${matchId}`)
+    const banPickData = {
+      blueTeamBans: blueTeamBans.value,
+      redTeamBans: redTeamBans.value,
+      blueTeamPicks: blueTeamPicks.value,
+      redTeamPicks: redTeamPicks.value,
+      phase: banPickPhase.value,
+      timestamp: new Date().toISOString()
+    }
     
-    const response = await fetch(`${API_BASE_URL}/matches/${matchId}/status`, {
-      method: 'PUT',
+    // 로컬 스토리지에 저장
+    localStorage.setItem('banPickData', JSON.stringify(banPickData))
+    
+    // 백엔드에 저장 (선택사항)
+    const response = await fetch(`${API_BASE_URL}/banpick/save`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ status: newStatus })
+      body: JSON.stringify(banPickData)
     })
-
+    
     if (response.ok) {
-      const statusText = getStatusText(newStatus)
-      showNotification(`내전 상태가 ${statusText}로 변경되었습니다.`, 'success')
-      
-      // WebSocket으로 다른 클라이언트에게 알림
-      if (ws.value && wsConnected.value) {
-        ws.value.send(JSON.stringify({
-          type: 'match_status_update',
-          matchId: matchId,
-          status: newStatus
-        }))
-      }
-      
-      // 데이터 새로고침
-      await fetchActiveMatches()
+      showNotification('밴픽 결과가 저장되었습니다!', 'success')
     } else {
-      throw new Error('상태 업데이트 실패')
+      showNotification('로컬에만 저장되었습니다.', 'warning')
     }
   } catch (error) {
-    console.error('내전 상태 업데이트 실패:', error)
-    showNotification('내전 상태 업데이트에 실패했습니다.', 'error')
+    console.error('밴픽 저장 실패:', error)
+    showNotification('밴픽 저장에 실패했습니다.', 'error')
   }
 }
 
-const getStatusText = (status) => {
-  const statusMap = {
-    'open': '모집중',
-    'in_progress': '진행중',
-    'completed': '완료',
-    'closed': '종료'
-  }
-  return statusMap[status] || status
+const refreshData = () => {
+  // 데이터 새로고침 (필요시 구현)
+  console.log('데이터 새로고침')
 }
 
-const getTypeText = (type) => {
-  const typeMap = {
-    'soft': '소프트',
-    'hard': '하드',
-    'hyper': '하이퍼'
-  }
-  return typeMap[type] || type
-}
+// 사용하지 않는 함수들 제거됨
 
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleString('ko-KR')
-}
+// 사용하지 않는 함수들 제거됨
 
 const showNotification = (message, type = 'info') => {
   // 알림 컴포넌트에 전달
@@ -625,15 +407,28 @@ const getNotificationTitle = (type) => {
 
 // 라이프사이클
 onMounted(() => {
-  connectWebSocket()
-  fetchActiveMatches()
   fetchChampions()
+  fetchGameHistory()
+  
+  // 임시 팀 데이터 로드
+  blueTeam.value = [
+    { id: 1, name: 'Player1', tier: 'Gold I' },
+    { id: 2, name: 'Player2', tier: 'Platinum IV' },
+    { id: 3, name: 'Player3', tier: 'Gold II' },
+    { id: 4, name: 'Player4', tier: 'Silver I' },
+    { id: 5, name: 'Player5', tier: 'Gold III' }
+  ]
+  redTeam.value = [
+    { id: 6, name: 'Player6', tier: 'Platinum III' },
+    { id: 7, name: 'Player7', tier: 'Gold I' },
+    { id: 8, name: 'Player8', tier: 'Silver II' },
+    { id: 9, name: 'Player9', tier: 'Gold IV' },
+    { id: 10, name: 'Player10', tier: 'Platinum II' }
+  ]
 })
 
 onUnmounted(() => {
-  if (ws.value) {
-    ws.value.close()
-  }
+  // 정리 작업
 })
 
 // 챔피언 검색 감시
@@ -1131,5 +926,31 @@ watch(championSearch, searchChampions)
   .champion-name {
     font-size: 0.6rem;
   }
+}
+
+/* 저장 버튼 스타일 */
+.save-btn {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+}
+
+.save-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+}
+
+.save-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 </style>

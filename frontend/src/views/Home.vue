@@ -280,7 +280,7 @@ const fetchMatchCounts = async () => {
 
 // 내전 관리 함수들
 const goToRealtime = () => {
-  router.push('/realtime')
+  router.push('/banpick')
 }
 
 const goToBanPick = () => {
@@ -288,7 +288,7 @@ const goToBanPick = () => {
 }
 
 const goToRealtimeBalance = () => {
-  router.push('/realtime-balance')
+  router.push('/balance')
 }
 
 const viewMatch = (match: any) => {

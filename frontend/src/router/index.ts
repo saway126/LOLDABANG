@@ -3,9 +3,7 @@ import Home from '../views/Home.vue'
 import Create from '../views/Create.vue'
 import Balance from '../views/Balance.vue'
 import MatchDetail from '../views/MatchDetail.vue'
-import Realtime from '../views/Realtime.vue'
 import RealtimeBanPick from '../views/RealtimeBanPick.vue'
-import RealtimeBalance from '../views/RealtimeBalance.vue'
 import RiotBalance from '../views/RiotBalance.vue'
 
 const routes = [
@@ -13,9 +11,7 @@ const routes = [
   { path: '/create', name: 'Create', component: Create },
   { path: '/balance', name: 'Balance', component: Balance },
   { path: '/match/:id', name: 'MatchDetail', component: MatchDetail },
-  { path: '/realtime', name: 'Realtime', component: Realtime },
   { path: '/banpick', name: 'RealtimeBanPick', component: RealtimeBanPick },
-  { path: '/realtime-balance', name: 'RealtimeBalance', component: RealtimeBalance },
   { path: '/riot-balance', name: 'RiotBalance', component: RiotBalance }
 ]
 

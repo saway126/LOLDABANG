@@ -36,6 +36,10 @@
         <div class="nav-icon">🔍</div>
         <div class="nav-text">라이엇 밸런싱</div>
       </router-link>
+      <router-link to="/banpick" class="nav-item">
+        <div class="nav-icon">🎮</div>
+        <div class="nav-text">밴픽 관리</div>
+      </router-link>
     </nav>
     
     <main class="main">

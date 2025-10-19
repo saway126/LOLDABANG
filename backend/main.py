@@ -918,3 +918,42 @@ async def get_champion_mastery(summoner_id: str):
             return {"success": False, "message": "챔피언 숙련도 정보를 찾을 수 없습니다."}
     except Exception as e:
         return {"success": False, "message": str(e)}
+
+# ===== 밴픽 관리 =====
+
+@app.post("/api/banpick/save")
+async def save_banpick(banpick_data: dict):
+    """밴픽 결과 저장"""
+    try:
+        # 로컬 스토리지에 저장하는 방식이므로 단순히 성공 응답
+        return {"success": True, "message": "밴픽 결과가 저장되었습니다."}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+# ===== AI 분석 =====
+
+@app.post("/api/ai/analyze-balance")
+async def analyze_balance(analysis_data: dict):
+    """밸런스 AI 분석"""
+    try:
+        # 간단한 분석 로직 (실제로는 AI 모델 사용)
+        teams = analysis_data.get('teams', [])
+        if len(teams) != 2:
+            return {"success": False, "message": "팀이 2개가 아닙니다."}
+        
+        team1_score = sum(player.get('score', 0) for player in teams[0])
+        team2_score = sum(player.get('score', 0) for player in teams[1])
+        
+        diff = abs(team1_score - team2_score)
+        
+        analysis = {
+            "team1_score": team1_score,
+            "team2_score": team2_score,
+            "difference": diff,
+            "balance_quality": "excellent" if diff < 50 else "good" if diff < 100 else "fair" if diff < 200 else "poor",
+            "recommendation": "균형이 좋습니다." if diff < 50 else "약간의 조정이 필요합니다." if diff < 100 else "팀 구성을 다시 검토해보세요."
+        }
+        
+        return {"success": True, "analysis": analysis}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
