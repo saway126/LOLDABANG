@@ -73,9 +73,13 @@
                     class="riot-api-btn"
                     :disabled="loading"
                     v-if="player.name.includes('#')"
+                    :title="'라이엇 API에서 ' + player.name + '의 데이터를 가져옵니다'"
                   >
                     🔍 라이엇 데이터
                   </button>
+                  <div v-if="!player.name.includes('#')" class="riot-api-info">
+                    <small>라이엇 ID 형식: 소환사명#태그</small>
+                  </div>
                 </div>
               </div>
             </div>
@@ -270,6 +274,10 @@ const fetchRiotData = async (player) => {
     const accountData = await accountResponse.json()
     
     if (!accountData.success) {
+      // 라이엇 API 키가 없는 경우 특별 처리
+      if (accountData.message && accountData.message.includes('라이엇 API 키')) {
+        throw new Error('라이엇 API가 설정되지 않았습니다. 관리자에게 문의하세요.')
+      }
       throw new Error(accountData.message || '계정 정보를 찾을 수 없습니다.')
     }
     
@@ -338,6 +346,23 @@ const loadRiotData = async (player) => {
   
   // 캐시가 없거나 오래된 경우 API 호출
   return await fetchRiotData(player)
+}
+
+// 라이엇 API 상태 확인
+const checkRiotAPIStatus = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/riot/summoner/test/test`)
+    const data = await response.json()
+    
+    if (data.message && data.message.includes('라이엇 API 키')) {
+      showNotification('라이엇 API가 설정되지 않았습니다. 관리자에게 문의하세요.', 'warning')
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('라이엇 API 상태 확인 실패:', error)
+    return false
+  }
 }
 
 const selectMatch = async (matchId: number) => {
@@ -718,6 +743,12 @@ onMounted(() => {
 .riot-api-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.riot-api-info {
+  margin-top: 0.3rem;
+  color: var(--text-light);
+  font-size: 0.75rem;
 }
 
 .tier-badge {

@@ -868,6 +868,10 @@ if __name__ == "__main__":
 async def get_summoner_by_riot_id(game_name: str, tag_line: str):
     """라이엇 ID로 소환사 정보 조회"""
     try:
+        # 라이엇 API 키 확인
+        if not riot_service.api_key:
+            return {"success": False, "message": "라이엇 API 키가 설정되지 않았습니다. 관리자에게 문의하세요."}
+        
         result = await riot_service.get_summoner_by_riot_id(game_name, tag_line)
         if result:
             return {"success": True, "data": result}
