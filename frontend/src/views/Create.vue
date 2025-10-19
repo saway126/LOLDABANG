@@ -42,20 +42,23 @@
         </div>
       </div>
       
-      <div class="form-section">
-        <h3 class="section-title">🔍 Riot ID 가져오기 (클립보드/이미지 OCR)</h3>
-        <details class="mb-4">
-          <summary class="cursor-pointer font-semibold text-lg mb-4 p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
-            ⚙️ Riot ID 가져오기 도구 열기
-          </summary>
-          <div class="p-4 bg-gray-50 rounded-lg">
-            <RiotIdImportPanel @done="onRiotIdImport" />
+      <div class="form-section riot-import-section">
+        <h3 class="section-title">⭐ Riot ID 가져오기 (추천)</h3>
+        <div class="riot-import-highlight">
+          <div class="import-description">
+            <p>📌 가장 정확한 방법입니다!</p>
+            <p>클립보드, 이미지 OCR, 또는 직접 입력으로 Riot ID를 가져올 수 있습니다.</p>
           </div>
-        </details>
+          <RiotIdImportPanel @done="onRiotIdImport" />
+        </div>
       </div>
       
       <div class="form-section">
-        <h3 class="section-title">💬 카카오톡 댓글 파싱</h3>
+        <h3 class="section-title">💬 카카오톡 댓글 파싱 (선택사항)</h3>
+        <div class="parsing-note">
+          <p>⚠️ 간단한 형식만 지원합니다. 복잡한 경우 Riot ID 가져오기를 사용하세요.</p>
+          <p>지원 형식: <code>닉네임#태그 G1 TOP</code> 또는 <code>닉네임#태그 G1 / TOP JUNGLE</code></p>
+        </div>
         <div class="parsing-container">
           <div class="form-group">
             <div class="form-label-row">
@@ -78,7 +81,7 @@
             </div>
             <textarea 
               v-model="kakaoText"
-              placeholder="닉네임#태그 G1 주라인 / 희망라인1 희망라인2&#10;예시:&#10;홍길동#KR1 G1 TOP / JUNGLE MID&#10;김철수#KR2 S2 JUNGLE / TOP"
+              placeholder="홍길동#KR1 G1 TOP&#10;김철수#KR2 P4 / JUNGLE MID&#10;이영희#KR3 S2 ADC"
               class="form-textarea"
               rows="6"
             ></textarea>
@@ -382,256 +385,100 @@ const handleImageUpload = async (event: Event) => {
 }
 
 const parseKakaoTalk = (text: string): { players: Player[]; errors: string[] } => {
-  const lines = text.split('\n').filter((line) => line.trim() !== '')
+  const lines = text.split('\n').filter(line => line.trim() !== '')
   const players: Player[] = []
   const errors: string[] = []
 
+  // 라인 매핑 (한글 -> 영문)
+  const laneMap: Record<string, string> = {
+    '탑': 'TOP', '정글': 'JUNGLE', '미드': 'MID',
+    '원딜': 'ADC', '서폿': 'SUPPORT', '서풋': 'SUPPORT'
+  }
+
   lines.forEach((line) => {
     try {
-      // 시간 정보 제거 (1시간 전, 55분 전 등)
-      const timeRemoved = line.replace(/\d+\s*(시간|분|시간)\s*전/g, '').trim()
+      // 시간 정보 제거
+      const cleaned = line.replace(/\d+\s*(시간|분)\s*전/g, '').trim()
+      if (!cleaned) return
+
+      // 패턴 1: 닉네임#태그 티어 라인 형식
+      // 예: "홍길동#KR1 G1 TOP"
+      const pattern1 = /^([^#\s]+#[^\s]+)\s+([A-Z]+)(\d*)\s+([가-힣A-Z]+)/i
+      const match1 = cleaned.match(pattern1)
       
-      // 정규화: 여러 공백을 하나로
-      const normalized = timeRemoved.replace(/\s+/g, ' ')
-      
-      // 빈 라인 스킵
-      if (!normalized) return
-      
-      // 닉네임#태그 패턴 찾기 (매우 유연하게)
-      // 다양한 형식 지원: 닉네임#태그, 닉네임, 숫자@숫자 등
-      let nameMatch = normalized.match(/^([^#\s]+(?:#[^\s]+)?)/)
-      
-      // 첫 번째 패턴이 실패하면 다른 패턴들 시도
-      if (!nameMatch) {
-        // 숫자@숫자 형식 (100@01)
-        nameMatch = normalized.match(/^(\d+@\d+)/)
+      if (match1) {
+        const [, name, tier, rank, lane] = match1
+        players.push({
+          name: name.trim(),
+          tier: tier.toUpperCase(),
+          rank: rank || '',
+          mainLane: laneMap[lane] || lane.toUpperCase(),
+          preferredLanes: []
+        })
+        return
       }
+
+      // 패턴 2: 닉네임#태그 티어 / 라인 형식
+      // 예: "홍길동#KR1 G1 / TOP JUNGLE"
+      const pattern2 = /^([^#\s]+#[^\s]+)\s+([A-Z]+)(\d*)\s+\/\s+(.+)/i
+      const match2 = cleaned.match(pattern2)
       
-      if (!nameMatch) {
-        // 한글 닉네임만 있는 경우 (엄마지키는게임)
-        nameMatch = normalized.match(/^([가-힣]+)/)
+      if (match2) {
+        const [, name, tier, rank, lanes] = match2
+        const laneList = lanes.split(/\s+/).map(l => laneMap[l] || l.toUpperCase())
+        players.push({
+          name: name.trim(),
+          tier: tier.toUpperCase(),
+          rank: rank || '',
+          mainLane: laneList[0] || 'UNKNOWN',
+          preferredLanes: laneList.slice(1)
+        })
+        return
       }
+
+      // 패턴 3: 닉네임만 (간단한 형식)
+      // 예: "홍길동#KR1"
+      const pattern3 = /^([^#\s]+#[^\s]+)/
+      const match3 = cleaned.match(pattern3)
       
-      if (!nameMatch) {
-        // 영문 닉네임만 있는 경우 (Evan)
-        nameMatch = normalized.match(/^([A-Za-z]+)/)
+      if (match3) {
+        players.push({
+          name: match3[1].trim(),
+          tier: 'UNRANKED',
+          rank: '',
+          mainLane: 'UNKNOWN',
+          preferredLanes: []
+        })
+        return
       }
+
+      // 파싱 실패
+      throw new Error('지원하지 않는 형식')
       
-      if (!nameMatch) {
-        // 시간 정보만 있는 라인은 스킵
-        if (line.includes('시간') || line.includes('분')) return
-        
-        // 마지막 시도: 첫 번째 단어를 닉네임으로 사용
-        const firstWord = normalized.split(' ')[0]
-        if (firstWord && firstWord.length > 0) {
-          nameMatch = [firstWord, firstWord]
-        } else {
-          throw new Error(`Invalid name format: ${line}`)
-        }
-      }
-      
-      const name = nameMatch[1]
-      const remaining = normalized.substring(name.length).trim()
-      
-      // 티어 정보 추출 - OCR 오류 대응 패턴 (더 유연하게)
-      const tierPattern = /^([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^([A-Za-z]+)(\d*)|^\/\s*([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^([A-Za-z]+)(\d*)\s*\/\s*([A-Za-z]+)(\d*)|^(\d+)\s*\/\s*(\d+)|^(\d+)|^([A-Za-z]+)|^([가-힣]+)(\d*)|^(\d+)\s*\/\s*(\d+)\s*\([^)]*\)/
-      const tierMatch = remaining.match(tierPattern)
-      
-      // 티어 정보 추출
-      let tier, rank
-      if (!tierMatch) {
-        // 티어 정보가 없으면 기본값 설정
-        tier = 'UNRANKED'
-        rank = ''
-      } else {
-        if (tierMatch[1] && tierMatch[2]) {
-          // 현재티어/최고티어 형식 (E4/E4)
-          tier = tierMatch[1].toUpperCase()
-          rank = tierMatch[2]
-        } else if (tierMatch[5] && tierMatch[6]) {
-          // 단일 티어 형식 (G3)
-          tier = tierMatch[5].toUpperCase()
-          rank = tierMatch[6]
-        } else if (tierMatch[7] && tierMatch[8]) {
-          // /S4/S4 형식
-          tier = tierMatch[7].toUpperCase()
-          rank = tierMatch[8]
-        } else if (tierMatch[9] && tierMatch[10]) {
-          // m240/d2 형식 (소문자)
-          tier = tierMatch[9].toUpperCase()
-          rank = tierMatch[10]
-        } else if (tierMatch[11] && tierMatch[12]) {
-          // 숫자/숫자 형식 (63/03)
-          tier = 'UNRANKED'
-          rank = tierMatch[11]
-        } else if (tierMatch[13]) {
-          // 단일 숫자 형식
-          tier = 'UNRANKED'
-          rank = tierMatch[13]
-        } else if (tierMatch[14]) {
-          // 단일 문자 형식
-          tier = tierMatch[14].toUpperCase()
-          rank = ''
-        } else if (tierMatch[15] && tierMatch[16]) {
-          // 한글 티어 형식 (경쟁사 088)
-          tier = 'UNRANKED'
-          rank = tierMatch[16]
-        } else if (tierMatch[17] && tierMatch[18]) {
-          // 괄호 포함 숫자/숫자 형식 (63/03(임시))
-          tier = 'UNRANKED'
-          rank = tierMatch[17]
-        } else {
-          tier = 'UNRANKED'
-          rank = ''
-        }
-      }
-      
-      // 티어 정보 제거
-      const afterTier = remaining.replace(tierPattern, '').trim()
-      
-      // 라인 정보 추출 - 더 유연한 패턴
-      console.log('After tier:', afterTier) // 디버깅용
-      
-      // 다양한 패턴을 시도
-      let laneMatch = null
-      let mainLane = 'UNKNOWN'
-      let preferredLanes: string[] = []
-      
-      // 패턴 1: 주라인 / 희망라인 (정글/정글서폿)
-      laneMatch = afterTier.match(/^\s*([가-힣ㅇ-ㅎㄱ-ㅎA-Za-z]+)\s*\/\s*(.+)/)
-      if (laneMatch) {
-        mainLane = laneMatch[1].trim()
-        preferredLanes = laneMatch[2].split(/\s+/)
-          .map(l => l.trim())
-          .filter(l => l && l !== '/' && l !== '-')
-      } else {
-        // 패턴 2: / 주라인 / 희망라인 (/ 정글 / 정글 탑 서폿)
-        laneMatch = afterTier.match(/^\s*\/\s*([가-힣ㅇ-ㅎㄱ-ㅎA-Za-z]+)\s*\/\s*(.+)/)
-        if (laneMatch) {
-          mainLane = laneMatch[1].trim()
-          preferredLanes = laneMatch[2].split(/\s+/)
-            .map(l => l.trim())
-            .filter(l => l && l !== '/' && l !== '-')
-        } else {
-          // 패턴 3: 주라인만 (정글)
-          laneMatch = afterTier.match(/^\s*([가-힣ㅇ-ㅎㄱ-ㅎA-Za-z]+)/)
-          if (laneMatch) {
-            mainLane = laneMatch[1].trim()
-            preferredLanes = []
-          } else {
-            // 패턴 4: 공백으로 시작하는 주라인
-            laneMatch = afterTier.match(/\s+([가-힣ㅇ-ㅎㄱ-ㅎA-Za-z]+)/)
-            if (laneMatch) {
-              mainLane = laneMatch[1].trim()
-              preferredLanes = []
-            }
-          }
-        }
-      }
-      
-      console.log('Parsed lane - mainLane:', mainLane, 'preferredLanes:', JSON.stringify(preferredLanes)) // 디버깅용
-      
-      // 라인명 정규화 - 한글 자모 우선 매핑 (OCR 오류 대응)
-      const laneMapping: Record<string, string> = {
-        // 한글 자모 (우선순위 높음) - OCR 오류 패턴 포함
-        'ㅇㄷ': 'ADC',      // 원딜
-        'ㅅㅍ': 'SUPPORT',  // 서폿  
-        'ㅁㄷ': 'MID',      // 미드
-        'ㅈㄱ': 'JUNGLE',   // 정글
-        'ㅌ': 'TOP',        // 탑
-        'ㅁㄷㅇㄷ': 'MID ADC', // 미드원딜
-        
-        // 한글 풀네임
-        '탑': 'TOP',
-        '정글': 'JUNGLE', 
-        '미드': 'MID',
-        '원딜': 'ADC',
-        '서폿': 'SUPPORT',
-        
-        // OCR 오류 패턴 (공백 포함)
-        '정 글': 'JUNGLE',
-        '미 드': 'MID',
-        '원 딜': 'ADC',
-        '서 폿': 'SUPPORT',
-        '서 풋': 'SUPPORT',
-        
-        // OCR 오류 패턴 (자모 분리)
-        'ㄷ ㄱ': 'JUNGLE',
-        'ㅁ ㄷ': 'MID',
-        'ㅇ ㄷ': 'ADC',
-        'ㅅ ㅍ': 'SUPPORT',
-        
-        // 부분 매칭을 위한 키워드
-        '서풋': 'SUPPORT',
-        
-        // 복합 라인명
-        '정글서폿': 'JUNGLE SUPPORT',
-        '정글탑': 'JUNGLE TOP',
-        '미드탑': 'MID TOP',
-        '원딜서폿': 'ADC SUPPORT',
-        '서폿원딜': 'SUPPORT ADC'
-      }
-      
-      // 메인 라인 정규화 (더 유연하게)
-      mainLane = laneMapping[mainLane] || 
-        Object.keys(laneMapping).find(key => mainLane.includes(key)) ? 
-        laneMapping[Object.keys(laneMapping).find(key => mainLane.includes(key))!] : 
-        mainLane.toUpperCase()
-      
-      const finalPreferredLanes = preferredLanes.map(l => {
-        // 복합 라인명 처리
-        if (l.includes('정글서폿')) return 'JUNGLE SUPPORT'
-        if (l.includes('정글탑')) return 'JUNGLE TOP'
-        if (l.includes('미드탑')) return 'MID TOP'
-        if (l.includes('원딜서폿')) return 'ADC SUPPORT'
-        if (l.includes('ㅁㄷㅇㄷ')) return 'MID ADC'
-        
-        // 부분 매칭 시도
-        const partialMatch = Object.keys(laneMapping).find(key => l.includes(key))
-        if (partialMatch) {
-          return laneMapping[partialMatch]
-        }
-        
-        return laneMapping[l] || l.toUpperCase()
-      }).filter(l => l)
-      
-      console.log('Final result - name:', name, 'tier:', tier, 'rank:', rank, 'mainLane:', mainLane, 'preferredLanes:', JSON.stringify(finalPreferredLanes)) // 최종 결과
-      
-      // 희망 라인들 정규화
-      preferredLanes = preferredLanes.map(l => {
-        // 복합 라인명 처리
-        if (l.includes('정글서폿')) return 'JUNGLE SUPPORT'
-        if (l.includes('정글탑')) return 'JUNGLE TOP'
-        if (l.includes('미드탑')) return 'MID TOP'
-        if (l.includes('원딜서폿')) return 'ADC SUPPORT'
-        if (l.includes('ㅁㄷㅇㄷ')) return 'MID ADC'
-        
-        return laneMapping[l] || l.toUpperCase()
-      }).filter(l => l) // 빈 문자열 제거
-      
-      players.push({
-        name,
-        tier,
-        rank,
-        mainLane,
-        preferredLanes,
-      })
-        } catch (e) {
-          console.log('Parsing failed for line:', line, 'Error:', e)
-          errors.push(line)
-        }
+    } catch (e) {
+      errors.push(line)
+    }
   })
 
   return { players, errors }
 }
 
 const parseText = () => {
+  if (!kakaoText.value.trim()) {
+    alert('텍스트를 입력해주세요.')
+    return
+  }
+
   const result = parseKakaoTalk(kakaoText.value)
   parsedPlayers.value = result.players
   selectedPlayers.value = result.players.map(p => p.name)
   
-  if (result.errors.length > 0) {
-    alert(`파싱에 실패한 라인: ${result.errors.join(', ')}`)
+  if (result.players.length === 0 && result.errors.length > 0) {
+    alert('❌ 파싱에 실패했습니다.\n\n지원 형식:\n• 닉네임#태그 G1 TOP\n• 닉네임#태그 P4 / JUNGLE MID\n\n복잡한 경우 "Riot ID 가져오기"를 사용하세요.')
+  } else if (result.errors.length > 0) {
+    alert(`✅ ${result.players.length}명 파싱 성공\n⚠️ ${result.errors.length}개 라인 실패\n\n실패한 라인:\n${result.errors.slice(0, 3).join('\n')}${result.errors.length > 3 ? '\n...' : ''}`)
+  } else {
+    alert(`✅ ${result.players.length}명 성공적으로 파싱되었습니다!`)
   }
 }
 
@@ -1082,5 +929,63 @@ onMounted(() => {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+/* Riot ID 가져오기 섹션 스타일 */
+.riot-import-section {
+  background: linear-gradient(135deg, rgba(139, 69, 19, 0.08), rgba(212, 196, 168, 0.15));
+  padding: 2rem;
+  border-radius: 15px;
+  border: 2px solid rgba(139, 69, 19, 0.3);
+}
+
+.riot-import-highlight {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.1);
+}
+
+.import-description {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(74, 144, 226, 0.05);
+  border-left: 4px solid #4A90E2;
+  border-radius: 8px;
+}
+
+.import-description p {
+  margin: 0.5rem 0;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.import-description p:first-child {
+  font-weight: 600;
+  color: #4A90E2;
+}
+
+/* 카카오톡 파싱 안내 스타일 */
+.parsing-note {
+  background: rgba(255, 193, 7, 0.1);
+  border-left: 4px solid #FFC107;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+}
+
+.parsing-note p {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.parsing-note code {
+  background: rgba(139, 69, 19, 0.1);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: #8B4513;
 }
 </style>
