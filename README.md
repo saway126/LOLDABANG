@@ -7,11 +7,17 @@
 - **내전 종류 보기** 🎮: 소프트/하드/하이퍼 피어리스 설명 및 종류별 내전 목록
 - **내전 생성** ➕: 카카오톡 댓글 파싱을 통한 참가자 등록
 - **밸런스 조율** ⚖️: 참가자 선택, 팀 밸런싱, 팀장 선택
+- **실시간 내전 관리** 🔄: WebSocket 기반 실시간 내전 상태 업데이트
+- **밴픽 관리** 🎯: 실시간 밴픽 진행 상황 추적
+- **라이엇 API 연동** 🔍: 소환사 정보 자동 조회 및 캐싱
+- **알림 시스템** 🔔: 실시간 알림 및 브라우저 알림 지원
 
 ## 🛠 기술 스택
 
 - **프론트엔드**: Vue.js 3 + TypeScript + Vite + Tailwind CSS
-- **백엔드**: Python FastAPI + SQLite3
+- **백엔드**: Python FastAPI + SQLite3 + WebSocket
+- **외부 API**: Riot Games API (선택적)
+- **배포**: Railway (백엔드) + Vercel (프론트엔드)
 - **플랫폼**: 웹 (모바일 반응형 지원)
 
 ## 📱 설치 및 실행
@@ -69,6 +75,18 @@ http://localhost:5173
 3. 참가자 선택 (최소 10명)
 4. "밸런싱 실행"으로 팀 구성
 5. 팀장 선택 및 품질 점수 확인
+6. **라이엇 API 연동**: 소환사명#태그 형식으로 등록된 플레이어의 라이엇 데이터 자동 조회
+
+### 실시간 내전 관리
+1. **실시간** 탭에서 활성 내전 목록 확인
+2. 내전 상태 실시간 업데이트 (WebSocket 또는 폴링)
+3. 내전 시작/종료 상태 변경
+4. 실시간 알림으로 상태 변화 추적
+
+### 밴픽 관리
+1. **밴픽** 탭에서 밴픽 진행 중인 내전 확인
+2. 실시간 밴픽 상황 추적
+3. 팀 구성 및 밴픽 순서 관리
 
 ## 📊 API 명세
 
@@ -85,6 +103,17 @@ http://localhost:5173
 - `GET /api/matches/recent` - 최근 내전 조회
 - `GET /api/matches/by-type/{type}` - 종류별 내전 조회
 - `GET /api/matches/{id}/participants` - 참가자 조회
+- `PUT /api/matches/{id}/status` - 내전 상태 업데이트
+
+### 실시간 기능
+- `WebSocket /ws` - 실시간 내전 상태 업데이트
+- `GET /api/matches/active` - 활성 내전 조회
+
+### 라이엇 API 연동 (선택적)
+- `GET /api/riot/summoner/{game_name}/{tag_line}` - 라이엇 ID로 소환사 정보 조회
+- `GET /api/riot/summoner/puuid/{puuid}` - PUUID로 소환사 상세 정보 조회
+- `GET /api/riot/league/{summoner_id}` - 소환사 리그 정보 조회
+- `GET /api/riot/champion-mastery/{summoner_id}` - 챔피언 숙련도 조회
 
 ## 🎮 카카오톡 댓글 파싱 형식
 
@@ -188,18 +217,36 @@ npm run build
 - 내전 종류별 목록 조회
 - 카카오톡 댓글 파싱 UI
 - 팀 밸런싱 및 팀장 선택
+- 실시간 내전 관리 인터페이스
+- 밴픽 관리 시스템
+- 라이엇 API 연동 UI
+- 실시간 알림 시스템
 
 ✅ **백엔드**
 - Python FastAPI 서버
 - SQLite 데이터베이스
 - RESTful API 엔드포인트
+- WebSocket 실시간 통신
 - 고급 카카오톡 파싱 로직
+- 라이엇 API 연동 서비스
 - CORS 및 에러 처리
 
 ✅ **데이터베이스**
 - 매치, 플레이어, 참가자 테이블
 - JSON 기반 희망라인 저장
 - 자동 스키마 생성
+
+✅ **실시간 기능**
+- WebSocket 기반 실시간 업데이트
+- 폴링 폴백 메커니즘
+- 실시간 알림 시스템
+- 브라우저 알림 지원
+
+✅ **라이엇 API 연동**
+- 소환사 정보 자동 조회
+- 리그 정보 및 챔피언 숙련도 조회
+- 로컬 캐싱 시스템
+- API 키 설정 안내
 
 ## 🚀 빠른 시작
 
@@ -249,6 +296,17 @@ npm run build
    cd frontend && npm run build
    vercel --prod
    ```
+
+**라이엇 API 설정 (선택적)**
+1. [Riot Games Developer Portal](https://developer.riotgames.com/)에서 API 키 발급
+2. Railway 대시보드에서 환경 변수 설정:
+   - `RIOT_API_KEY`: 발급받은 라이엇 API 키
+3. 재배포 후 라이엇 API 기능 활성화
+
+## 🌐 배포 URL
+
+- **프론트엔드**: https://loldabang.vercel.app
+- **백엔드**: https://loldabang-production.up.railway.app
 
 ## 📄 라이선스
 
