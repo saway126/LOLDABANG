@@ -3,6 +3,8 @@
     <div class="page-header">
       <h2 class="page-title">⚖️ 밸런스 조율</h2>
       <p class="page-subtitle">공정한 팀 구성을 위한 밸런싱 도구입니다</p>
+      <!-- 알림 컴포넌트 -->
+      <RealtimeNotification ref="notificationComponent" />
     </div>
     
     <div class="form-container">
@@ -151,6 +153,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import RealtimeNotification from '../components/RealtimeNotification.vue'
 
 interface Player {
   id?: number
@@ -185,6 +188,7 @@ const selectedParticipantIds = ref<number[]>([])
 const loading = ref(false)
 const balanceResult = ref<BalanceResult | null>(null)
 const teamCaptains = ref<Record<string, number>>({})
+const notificationComponent = ref(null)
 
 // 환경에 따라 API URL 설정
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://loldabang-production.up.railway.app/api'
@@ -194,10 +198,51 @@ const fetchMatches = async () => {
     const response = await fetch(`${API_BASE_URL}/matches/recent`)
     const data = await response.json()
     matches.value = data
+    
+    // 성공 알림
+    if (notificationComponent.value) {
+      notificationComponent.value.addNotification({
+        type: 'success',
+        title: '내전 목록 로드',
+        message: `${data.length}개의 내전을 불러왔습니다.`,
+        timestamp: new Date()
+      })
+    }
   } catch (error) {
     console.error('Failed to fetch matches:', error)
     matches.value = []
+    
+    // 오류 알림
+    if (notificationComponent.value) {
+      notificationComponent.value.addNotification({
+        type: 'error',
+        title: '내전 목록 로드 실패',
+        message: '내전 목록을 불러오는데 실패했습니다.',
+        timestamp: new Date()
+      })
+    }
   }
+}
+
+const showNotification = (message, type = 'info') => {
+  if (notificationComponent.value) {
+    notificationComponent.value.addNotification({
+      type,
+      title: getNotificationTitle(type),
+      message,
+      timestamp: new Date()
+    })
+  }
+}
+
+const getNotificationTitle = (type) => {
+  const titles = {
+    'success': '성공',
+    'error': '오류',
+    'warning': '경고',
+    'info': '알림'
+  }
+  return titles[type] || '알림'
 }
 
 const selectMatch = async (matchId: number) => {
