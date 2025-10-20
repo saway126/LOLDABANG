@@ -92,6 +92,59 @@
           </div>
         </div>
       </div>
+
+      <div class="form-section">
+        <h3 class="section-title">➕ 수동 추가 (보완)</h3>
+        <div class="parsing-container">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">닉네임#태그</label>
+              <input v-model="manualName" placeholder="예: 홍길동#KR1" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">티어</label>
+              <select v-model="manualTier" class="form-select">
+                <option>UNRANKED</option>
+                <option>IRON</option>
+                <option>BRONZE</option>
+                <option>SILVER</option>
+                <option>GOLD</option>
+                <option>PLATINUM</option>
+                <option>EMERALD</option>
+                <option>DIAMOND</option>
+                <option>MASTER</option>
+                <option>GRANDMASTER</option>
+                <option>CHALLENGER</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">디비전</label>
+              <select v-model="manualRank" class="form-select">
+                <option value="">-</option>
+                <option>IV</option>
+                <option>III</option>
+                <option>II</option>
+                <option>I</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">주 라인</label>
+              <select v-model="manualLane" class="form-select">
+                <option>TOP</option>
+                <option>JUNGLE</option>
+                <option>MID</option>
+                <option>ADC</option>
+                <option>SUPPORT</option>
+                <option>UNKNOWN</option>
+              </select>
+            </div>
+          </div>
+          <button type="button" class="parse-btn" @click="addManualPlayer">
+            <span class="btn-icon">➕</span>
+            <span class="btn-text">참가자 추가</span>
+          </button>
+        </div>
+      </div>
       
       <div v-if="parsedPlayers.length > 0" class="form-section">
         <h3 class="section-title">👥 참가자 선택</h3>
@@ -171,6 +224,12 @@ const parsedPlayers = ref<Player[]>([])
 const selectedPlayers = ref<string[]>([])
 const imageInput = ref<HTMLInputElement | null>(null)
 const ocrLoading = ref(false)
+
+// 수동 추가 입력
+const manualName = ref('')
+const manualTier = ref<'UNRANKED'|'IRON'|'BRONZE'|'SILVER'|'GOLD'|'PLATINUM'|'EMERALD'|'DIAMOND'|'MASTER'|'GRANDMASTER'|'CHALLENGER'>('UNRANKED')
+const manualRank = ref<'IV'|'III'|'II'|'I'|''>('')
+const manualLane = ref<'TOP'|'JUNGLE'|'MID'|'ADC'|'SUPPORT'|'UNKNOWN'>('UNKNOWN')
 
 // Riot ID 가져오기 핸들러
 function onRiotIdImport(riotIds: RiotId[]) {
@@ -497,6 +556,33 @@ const togglePlayer = (playerName: string) => {
   } else {
     selectedPlayers.value.push(playerName)
   }
+}
+
+// 수동 추가 핸들러
+const addManualPlayer = () => {
+  const raw = manualName.value.trim()
+  const idRe = /^([^#\s]+)#([^\s]+)$/
+  const m = raw.match(idRe)
+  if (!m) {
+    alert('닉네임 형식이 올바르지 않습니다. 예: 홍길동#KR1')
+    return
+  }
+  const name = `${m[1]}#${m[2]}`
+  const player: Player = {
+    name,
+    tier: manualTier.value,
+    rank: manualRank.value || undefined,
+    mainLane: manualLane.value,
+    preferredLanes: []
+  }
+  // 중복 방지
+  if (parsedPlayers.value.some(p => p.name === name)) {
+    alert('이미 추가된 참가자입니다.')
+    return
+  }
+  parsedPlayers.value.push(player)
+  selectedPlayers.value.push(name)
+  manualName.value = ''
 }
 
 const createMatch = async () => {

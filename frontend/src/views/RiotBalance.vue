@@ -162,6 +162,13 @@ const getAverageWinrate = (team: PlayerOut[]): string => {
                 <div>• 예: 40% 승률 = -40점</div>
               </div>
             </div>
+            <div class="p-4 bg-yellow-50 rounded">
+              <h4 class="font-semibold text-sm mb-2">가중 방식</h4>
+              <div class="text-sm space-y-1">
+                <div>• 최근 승률 = 솔랭 70% + 자랭 30% 가중 평균</div>
+                <div>• 둘 중 하나만 있으면 해당 큐 승률만 사용</div>
+              </div>
+            </div>
             
             <div class="p-4 bg-blue-50 rounded">
               <h4 class="font-semibold text-sm mb-2">최근 경기 수</h4>

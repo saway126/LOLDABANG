@@ -45,16 +45,38 @@ def balance_5v5(payload: TeamBalanceRequest):
         solo = next((e for e in leagues if e.get("queueType")=="RANKED_SOLO_5x5"), None) or {}
         tier = solo.get("tier"); rank = solo.get("rank"); lp = int(solo.get("leaguePoints", 0))
 
-        # recent winrate
+        # recent winrate (weighted: 70% solo, 30% flex)
         try:
             ids = get_recent_match_ids(p.platform, summ["puuid"], payload.recent)
-            wins = 0; total = 0
+            solo_wins = solo_total = 0
+            flex_wins = flex_total = 0
             for mid in ids:
                 m = get_match(p.platform, mid)
-                me = next((pp for pp in m.get("info", {}).get("participants", []) if pp.get("puuid")==summ["puuid"]), None)
-                if not me: continue
-                total += 1; wins += 1 if me.get("win") else 0
-            wr = None if total==0 else wins/total
+                info = m.get("info", {})
+                queue_id = info.get("queueId")
+                me = next((pp for pp in info.get("participants", []) if pp.get("puuid")==summ["puuid"]), None)
+                if not me:
+                    continue
+                if queue_id == 420:  # Ranked Solo
+                    solo_total += 1
+                    if me.get("win"):
+                        solo_wins += 1
+                elif queue_id == 440:  # Ranked Flex
+                    flex_total += 1
+                    if me.get("win"):
+                        flex_wins += 1
+
+            solo_wr = None if solo_total == 0 else solo_wins / solo_total
+            flex_wr = None if flex_total == 0 else flex_wins / flex_total
+
+            if solo_wr is None and flex_wr is None:
+                wr = None
+            elif solo_wr is None:
+                wr = flex_wr
+            elif flex_wr is None:
+                wr = solo_wr
+            else:
+                wr = solo_wr * 0.7 + flex_wr * 0.3
         except Exception:
             wr = None
 
